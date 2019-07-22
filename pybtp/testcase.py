@@ -173,11 +173,11 @@ class GAPTestCase(BTPTestCase):
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
     def test_pairing_jw(self):
-        btp.gap_set_io_cap(self.iut, IOCap.display_only)
-        connection_procedure(self, central=self.lt, peripheral=self.iut)
+        btp.gap_set_io_cap(self.lt, IOCap.no_input_output)
+        connection_procedure(self, central=self.iut, peripheral=self.lt)
         btp.gap_pair(self.iut, self.lt.stack.gap.iut_addr_get())
         time.sleep(10)
-        disconnection_procedure(self, central=self.lt, peripheral=self.iut)
+        disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
     def test_pairing_numcmp(self):
         btp.gap_set_io_cap(self.iut, IOCap.display_yesno)
