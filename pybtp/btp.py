@@ -799,7 +799,7 @@ def gap_conn_param_update(iutctl: IutCtl, addr: BleAddress, conn_itvl_min,
 
     iutctl.btp_worker.send(*GAP['conn_param_update'], data=data_ba)
 
-    gap_command_rsp_succ(iutctl)
+    gap_command_rsp_succ(iutctl, defs.GAP_CONN_PARAM_UPDATE)
 
 
 def gap_read_ctrl_info(iutctl: IutCtl):
@@ -999,6 +999,7 @@ GAP_EV = {
     defs.GAP_EV_DEVICE_DISCONNECTED: gap_disconnected_ev_,
     defs.GAP_EV_PASSKEY_DISPLAY: gap_passkey_disp_ev_,
     defs.GAP_EV_PASSKEY_CONFIRM_REQ: gap_passkey_confirm_req_ev_,
+    defs.GAP_EV_CONN_PARAM_UPDATE: gap_conn_param_update_ev_,
 }
 
 
