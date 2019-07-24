@@ -176,7 +176,7 @@ class GAPTestCase(BTPTestCase):
         btp.gap_set_io_cap(self.lt, IOCap.no_input_output)
         connection_procedure(self, central=self.iut, peripheral=self.lt)
         btp.gap_pair(self.iut, self.lt.stack.gap.iut_addr_get())
-        time.sleep(10)
+        time.sleep(20)
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
     def test_pairing_numcmp(self):
@@ -187,7 +187,7 @@ class GAPTestCase(BTPTestCase):
 
         btp.gap_pair(self.iut, self.lt.stack.gap.iut_addr_get())
 
-        pk_iut = self.iut.stack.gap.get_passkey()
+        pk_iut = self.iut.stack.gap.get_passkey(timeout=20)
         self.assertIsNotNone(pk_iut)
         pk_lt = self.lt.stack.gap.get_passkey()
         self.assertIsNotNone(pk_lt)
@@ -210,7 +210,7 @@ class GAPTestCase(BTPTestCase):
         btp.gap_pair(self.iut,
                      self.lt.stack.gap.iut_addr_get())
 
-        pk_lt = self.lt.stack.gap.get_passkey()
+        pk_lt = self.lt.stack.gap.get_passkey(timeout=20)
         self.assertIsNotNone(pk_lt)
 
         btp.gap_passkey_entry_req_ev(self.iut,
