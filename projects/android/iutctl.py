@@ -25,11 +25,15 @@ class AndroidCtl(IutCtl):
         # self.log_file = open(self.log_filename, "w")
 
         self._stack = Stack()
-        self.event_handler = BTPEventHandler(self)
+        self._event_handler = BTPEventHandler(self)
 
     @property
     def btp_worker(self):
         return self._btp_worker
+
+    @property
+    def event_handler(self):
+        return self._event_handler
 
     @property
     def stack(self):
@@ -41,7 +45,7 @@ class AndroidCtl(IutCtl):
         self._btp_socket = BTPWebSocket(self.host, self.port)
         self._btp_worker = BTPWorker(self._btp_socket, 'RxWorkerAndroid')
         self._btp_worker.open()
-        self._btp_worker.register_event_handler(self.event_handler)
+        self._btp_worker.register_event_handler(self._event_handler)
         self._btp_worker.accept()
 
     def reset(self):

@@ -181,6 +181,9 @@ class Gap:
     def set_conn_params(self, params):
         self.conn_params.data = params
 
+    def get_conn_params(self):
+        return self.conn_params.data
+
     def reset_discovery(self):
         self.discoverying.data = True
         self.found_devices.data = []

@@ -18,7 +18,10 @@
 import binascii
 import logging
 import struct
+import threading
 import uuid
+from collections import defaultdict
+from concurrent.futures.thread import ThreadPoolExecutor
 
 from common.iutctl import IutCtl
 from pybtp import defs
@@ -955,24 +958,10 @@ def gap_passkey_confirm_req_ev_(gap, data, data_len):
     gap.passkey.data = passkey
 
 
-def gap_conn_param_udpate_ev(iutctl: IutCtl):
-    logging.debug("%s", gap_conn_param_udpate_ev.__name__)
-
-    tuple_hdr, data = iutctl.btp_worker.read()
-    logging.debug("received %r %r", tuple_hdr, data)
-
-    btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GAP,
-                  defs.GAP_EV_CONN_PARAM_UPDATE)
-
-    fmt = '<B6sHHH'
-    if len(data[0]) != struct.calcsize(fmt):
-        raise BTPError("Invalid data length")
-
-    # Unpack and swap address
-    _addr_t, _addr, _itvl, _latency, _timeout = struct.unpack_from(fmt, data[0])
-    _addr = binascii.hexlify(_addr[::-1]).lower()
-
-    iutctl.stack.gap.set_conn_params(ConnParams(_itvl, _latency, _timeout))
+def gap_conn_param_update_ev(iutctl: IutCtl):
+    logging.debug("%s", gap_conn_param_update_ev.__name__)
+    return iutctl.event_handler.wait_on_event(defs.BTP_SERVICE_ID_GAP,
+                                              defs.GAP_EV_CONN_PARAM_UPDATE)
 
 
 def gap_conn_param_update_ev_(gap, data, data_len):
@@ -2858,9 +2847,29 @@ MESH_EV = {
 }
 
 
+class BTPEventListener:
+    def __init__(self):
+        self._sem = threading.Semaphore(value=0)
+
+    def acquire(self):
+        self._sem.acquire()
+
+    def release(self):
+        self._sem.release()
+
+
 class BTPEventHandler:
     def __init__(self, iutctl: IutCtl):
         self.iutctl = iutctl
+        self.gap_listeners = defaultdict(list)
+        self.executor = ThreadPoolExecutor()
+
+    def wait_on_event(self, svc_id, op):
+        listener = BTPEventListener()
+
+        if svc_id == defs.BTP_SERVICE_ID_GAP:
+            self.gap_listeners[op].append(listener)
+            return self.executor.submit(listener.acquire)
 
     def __call__(self, hdr, data):
         logging.debug("%s %r %r", BTPEventHandler.__name__, hdr, data)
@@ -2879,6 +2888,8 @@ class BTPEventHandler:
             if hdr.op in GAP_EV and stack.gap:
                 cb = GAP_EV[hdr.op]
                 cb(stack.gap, data[0], hdr.data_len)
+                for listener in self.gap_listeners[hdr.op]:
+                    listener.release()
                 return True
 
         # TODO: Raise BTP error instead of logging

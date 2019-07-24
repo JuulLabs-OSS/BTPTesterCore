@@ -22,6 +22,9 @@ class IutCtl:
     def btp_worker(self):
         raise NotImplementedError
 
+    def event_handler(self):
+        raise NotImplementedError
+
     @property
     def stack(self):
         raise NotImplementedError

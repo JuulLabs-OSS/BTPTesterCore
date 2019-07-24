@@ -41,12 +41,15 @@ class MynewtCtl(IutCtl):
         self.board = Board(id, "nrf52", self.log_file)
 
         self._stack = Stack()
-        self.event_handler = BTPEventHandler(self)
-
+        self._event_handler = BTPEventHandler(self)
 
     @property
     def btp_worker(self):
         return self._btp_worker
+
+    @property
+    def event_handler(self):
+        return self._event_handler
 
     @property
     def stack(self):
@@ -75,7 +78,7 @@ class MynewtCtl(IutCtl):
         self._btp_socket = BTPSocket(self.btp_address)
         self._btp_worker = BTPWorker(self._btp_socket, 'RxWorkerMynewt')
         self._btp_worker.open()
-        self._btp_worker.register_event_handler(self.event_handler)
+        self._btp_worker.register_event_handler(self._event_handler)
 
         socat_cmd = ("socat -x -v %s,rawer,b115200 UNIX-CONNECT:%s" %
                      (self.tty_file, self.btp_address))

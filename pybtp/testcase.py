@@ -2,6 +2,7 @@ import binascii
 import os
 import time
 import unittest
+from concurrent.futures import wait
 
 from pybtp import btp
 from pybtp.types import IOCap, AdType, UUID, PTS_DB, Prop, Perm
@@ -49,6 +50,16 @@ def disconnection_procedure(testcase, central, peripheral):
 
     testcase.assertFalse(peripheral.stack.gap.is_connected())
     testcase.assertFalse(central.stack.gap.is_connected())
+
+
+def verify_conn_params(iutctl, conn_itvl_min, conn_itvl_max,
+                       conn_latency, supervision_timeout):
+    params = iutctl.stack.gap.get_conn_params()
+
+    return (params.conn_itvl >= conn_itvl_min) and \
+           (params.conn_itvl <= conn_itvl_max) and \
+           (params.conn_latency == conn_latency) and \
+           (params.supervision_timeout == supervision_timeout)
 
 
 class BTPTestCase(unittest.TestCase):
@@ -160,15 +171,29 @@ class GAPTestCase(BTPTestCase):
     def test_connection_parameter_update_master(self):
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
+        conn_params = self.iut.stack.gap.get_conn_params()
+
+        conn_itvl_min, conn_itvl_max, latency, supervision_timeout = (
+            conn_params.conn_itvl,
+            conn_params.conn_itvl,
+            conn_params.conn_latency + 2,
+            conn_params.supervision_timeout)
+
         btp.gap_conn_param_update(self.iut,
                                   self.lt.stack.gap.iut_addr_get(),
-                                  0x0032,
-                                  0x0046,
-                                  0,
-                                  0x07d0)
+                                  conn_itvl_min, conn_itvl_max, latency,
+                                  supervision_timeout)
 
-        btp.gap_conn_param_udpate_ev(self.iut)
-        btp.gap_conn_param_udpate_ev(self.lt)
+        wait([btp.gap_conn_param_update_ev(self.iut),
+              btp.gap_conn_param_update_ev(self.lt)], timeout=20)
+
+        self.assertTrue(verify_conn_params(self.iut, conn_itvl_min,
+                                           conn_itvl_max, latency,
+                                           supervision_timeout))
+
+        self.assertTrue(verify_conn_params(self.lt, conn_itvl_min,
+                                           conn_itvl_max, latency,
+                                           supervision_timeout))
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
