@@ -710,7 +710,7 @@ class GAPTestCase(BTPTestCase):
                                      PTS_DB.CHR_READ_WRITE)
         btp.gatts_start_server(self.lt)
 
-        init_value = "00" * 280
+        init_value = "00" * 100
         btp.gatts_set_val(self.lt, char_id, init_value)
 
         connection_procedure(self, central=self.iut, peripheral=self.lt)
@@ -727,7 +727,7 @@ class GAPTestCase(BTPTestCase):
         chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
         self.assertIsNotNone(chr)
 
-        new_value = "FF" * 280
+        new_value = "FF" * 100
         btp.gattc_write_long(self.iut,
                              self.lt.stack.gap.iut_addr_get(),
                              chr.value_handle,
@@ -754,7 +754,7 @@ class GAPTestCase(BTPTestCase):
                                      PTS_DB.DSC_READ_WRITE)
         btp.gatts_start_server(self.lt)
 
-        init_value = "00" * 280
+        init_value = "00" * 100
         btp.gatts_set_val(self.lt, desc_id, init_value)
 
         connection_procedure(self, central=self.iut, peripheral=self.lt)
@@ -796,7 +796,7 @@ class GAPTestCase(BTPTestCase):
         dsc = db.find_dsc_by_uuid(PTS_DB.DSC_READ_WRITE)
         self.assertIsNotNone(dsc)
 
-        new_value = "FF" * 280
+        new_value = "FF" * 100
         btp.gattc_write_long(self.iut,
                              self.lt.stack.gap.iut_addr_get(),
                              dsc.handle,
