@@ -851,8 +851,10 @@ def gap_identity_resolved_ev(iutctl: IutCtl):
     _id_addr = binascii.hexlify(_id_addr[::-1]).lower().decode()
 
 
-def gap_new_settings_ev_(gap, data, data_len):
+def gap_new_settings_ev_(stack, data, data_len):
     logging.debug("%s %r", gap_new_settings_ev_.__name__, data)
+
+    gap = stack.gap
 
     data_fmt = '<I'
 
@@ -861,15 +863,17 @@ def gap_new_settings_ev_(gap, data, data_len):
     __gap_current_settings_update(gap, curr_set)
 
 
-def gap_device_found_ev(iutctl: IutCtl, verify_f):
+def gap_device_found_ev(iutctl: IutCtl, verify_f=None):
     logging.debug("%s", gap_device_found_ev.__name__)
     return iutctl.event_handler.wait_for_event(defs.BTP_SERVICE_ID_GAP,
                                                defs.GAP_EV_DEVICE_FOUND,
                                                verify_f)
 
 
-def gap_device_found_ev_(gap, data, data_len):
+def gap_device_found_ev_(stack, data, data_len):
     logging.debug("%s %r", gap_device_found_ev_.__name__, data)
+
+    gap = stack.gap
 
     fmt = '<B6sBBH'
     if len(data) < struct.calcsize(fmt):
@@ -898,8 +902,10 @@ def gap_connected_ev(iutctl: IutCtl, verify_f=None):
                                                verify_f)
 
 
-def gap_connected_ev_(gap, data, data_len):
+def gap_connected_ev_(stack, data, data_len):
     logging.debug("%s %r", gap_connected_ev_.__name__, data)
+
+    gap = stack.gap
 
     hdr_fmt = '<B6sHHH'
     hdr_len = struct.calcsize(hdr_fmt)
@@ -924,8 +930,10 @@ def gap_disconnected_ev(iutctl: IutCtl, verify_f=None):
                                                verify_f)
 
 
-def gap_disconnected_ev_(gap, data, data_len):
+def gap_disconnected_ev_(stack, data, data_len):
     logging.debug("%s %r", gap_disconnected_ev_.__name__, data)
+
+    gap = stack.gap
 
     hdr_fmt = '<B6s'
     hdr_len = struct.calcsize(hdr_fmt)
@@ -941,14 +949,14 @@ def gap_disconnected_ev_(gap, data, data_len):
     return addr,
 
 
-def gap_passkey_entry_req_ev(iutctl: IutCtl, verify_f):
+def gap_passkey_entry_req_ev(iutctl: IutCtl, verify_f=None):
     logging.debug("%s", gap_passkey_entry_req_ev.__name__)
     return iutctl.event_handler.wait_for_event(defs.BTP_SERVICE_ID_GAP,
                                                defs.GAP_EV_PASSKEY_ENTRY_REQ,
                                                verify_f)
 
 
-def gap_passkey_entry_req_ev_(gap, data, data_len):
+def gap_passkey_entry_req_ev_(stack, data, data_len):
     logging.debug("%s %r", gap_passkey_entry_req_ev_.__name__, data)
 
     fmt = '<B6s'
@@ -962,15 +970,17 @@ def gap_passkey_entry_req_ev_(gap, data, data_len):
     return BleAddress(_addr, _addr_type),
 
 
-def gap_passkey_disp_ev(iutctl: IutCtl, verify_f):
+def gap_passkey_disp_ev(iutctl: IutCtl, verify_f=None):
     logging.debug("%s", gap_passkey_disp_ev.__name__)
     return iutctl.event_handler.wait_for_event(defs.BTP_SERVICE_ID_GAP,
                                                defs.GAP_EV_PASSKEY_DISPLAY,
                                                verify_f)
 
 
-def gap_passkey_disp_ev_(gap, data, data_len):
+def gap_passkey_disp_ev_(stack, data, data_len):
     logging.debug("%s %r", gap_passkey_disp_ev_.__name__, data)
+
+    gap = stack.gap
 
     fmt = '<B6sI'
 
@@ -984,15 +994,17 @@ def gap_passkey_disp_ev_(gap, data, data_len):
     return BleAddress(addr, addr_type), passkey
 
 
-def gap_passkey_confirm_req_ev(iutctl: IutCtl, verify_f):
+def gap_passkey_confirm_req_ev(iutctl: IutCtl, verify_f=None):
     logging.debug("%s", gap_passkey_confirm_req_ev.__name__)
     return iutctl.event_handler.wait_for_event(defs.BTP_SERVICE_ID_GAP,
                                                defs.GAP_EV_PASSKEY_CONFIRM_REQ,
                                                verify_f)
 
 
-def gap_passkey_confirm_req_ev_(gap, data, data_len):
+def gap_passkey_confirm_req_ev_(stack, data, data_len):
     logging.debug("%s %r", gap_passkey_confirm_req_ev_.__name__, data)
+
+    gap = stack.gap
 
     fmt = '<B6sI'
 
@@ -1007,15 +1019,17 @@ def gap_passkey_confirm_req_ev_(gap, data, data_len):
     return bleaddr, passkey
 
 
-def gap_conn_param_update_ev(iutctl: IutCtl, verify_f):
+def gap_conn_param_update_ev(iutctl: IutCtl, verify_f=None):
     logging.debug("%s", gap_conn_param_update_ev.__name__)
     return iutctl.event_handler.wait_for_event(defs.BTP_SERVICE_ID_GAP,
                                                defs.GAP_EV_CONN_PARAM_UPDATE,
                                                verify_f)
 
 
-def gap_conn_param_update_ev_(gap, data, data_len):
+def gap_conn_param_update_ev_(stack, data, data_len):
     logging.debug("%s", gap_conn_param_update_ev_.__name__)
+
+    gap = stack.gap
 
     logging.debug("received %r", data)
 
@@ -1211,43 +1225,6 @@ def gatts_dec_attr_value_changed_ev_data(frame):
     data = struct.unpack_from('%ds' % data_len, frame, hdr_len)
 
     return handle, data
-
-
-def gatts_attr_value_changed_ev(iutctl: IutCtl):
-    logging.debug("%s", gatts_attr_value_changed_ev.__name__)
-
-    (tuple_hdr, tuple_data) = iutctl.btp_worker.read()
-
-    btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
-                  defs.GATT_EV_ATTR_VALUE_CHANGED)
-
-    (handle, data) = gatts_dec_attr_value_changed_ev_data(tuple_data[0])
-    logging.debug("%s %r %r", gatts_attr_value_changed_ev.__name__,
-                  handle, data)
-
-    return handle, data
-
-
-def gatts_verify_write_success(iutctl: IutCtl, description):
-    """
-    This verifies if PTS initiated write operation succeeded
-    """
-    logging.debug("%s", gatts_verify_write_success.__name__)
-
-    # If write is successful, Attribute Value Changed Event will be received
-    try:
-        (handle, value) = gatts_attr_value_changed_ev(iutctl)
-        logging.debug("%s Handle %r. Value %r has been successfully written",
-                      gatts_verify_write_success.__name__, handle, value)
-        return True
-    except BaseException:
-        logging.debug("%s PTS failed to write attribute value",
-                      gatts_verify_write_success.__name__)
-        return False
-
-
-def gatts_verify_write_fail(iutctl: IutCtl, description):
-    return not gatts_verify_write_success(iutctl, description)
 
 
 def btp2uuid(uuid_len, uu):
@@ -1942,32 +1919,6 @@ def gattc_cfg_indicate(iutctl: IutCtl, bd_addr: BleAddress, enable, ccc_hdl):
                   defs.GATT_CFG_INDICATE)
 
 
-def gattc_notification_ev(iutctl: IutCtl, bd_addr: BleAddress,
-                          ev_type, handle=None, value=None):
-    logging.debug("%s %r %r", gattc_notification_ev.__name__, bd_addr,
-                  ev_type)
-
-    tuple_hdr, tuple_data = iutctl.btp_worker.read()
-    logging.debug("received %r %r", tuple_hdr, tuple_data)
-
-    btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
-                  defs.GATT_EV_NOTIFICATION)
-
-    data_ba = bytearray(bd_addr)
-    data_ba.extend([ev_type])
-
-    if handle:
-        data_ba.extend(struct.pack('H', handle))
-
-    if value:
-        value_ba = binascii.unhexlify(value)
-        data_ba.extend(struct.pack('H', len(value_ba)))
-        data_ba.extend(value_ba)
-
-    if tuple_data[0][0:len(data_ba)] != data_ba:
-        raise BTPError("Error in notification event data")
-
-
 def gatt_command_rsp_succ(iutctl: IutCtl):
     logging.debug("%s", gatt_command_rsp_succ.__name__)
 
@@ -2372,6 +2323,53 @@ def gattc_write_long_rsp(iutctl: IutCtl, gatt_value: GattValue):
         return
 
     gatt_value.att_rsp = att_rsp_str[rsp]
+
+
+def gattc_dec_notification_ev_data(frame):
+    hdr = '<B6sBHH'
+    hdr_len = struct.calcsize(hdr)
+
+    addr_type, addr, type, handle, data_len = struct.unpack_from(hdr, frame)
+    addr = binascii.hexlify(addr[::-1]).lower().decode()
+    data = struct.unpack_from('%ds' % data_len, frame, hdr_len)
+    data = binascii.hexlify(data[0]).decode().upper()
+
+    return BleAddress(addr, addr_type), type, handle, data
+
+
+def gattc_notification_ev(iutctl: IutCtl, verify_f=None):
+    logging.debug("%s", gattc_notification_ev.__name__)
+    return iutctl.event_handler.wait_for_event(defs.BTP_SERVICE_ID_GATT,
+                                               defs.GATT_EV_NOTIFICATION,
+                                               verify_f)
+
+
+def gattc_notification_ev_(stack, data, data_len):
+    logging.debug("%s", gattc_notification_ev_.__name__)
+    return gattc_dec_notification_ev_data(data)
+
+
+def gatts_attr_value_changed_ev(iutctl: IutCtl, verify_f=None):
+    logging.debug("%s", gatts_attr_value_changed_ev.__name__)
+    return iutctl.event_handler.wait_for_event(defs.BTP_SERVICE_ID_GATT,
+                                               defs.GATT_EV_ATTR_VALUE_CHANGED,
+                                               verify_f)
+
+
+def gatts_attr_value_changed_ev_(stack, data, data_len):
+    logging.debug("%s", gatts_attr_value_changed_ev_.__name__)
+
+    (handle, data) = gatts_dec_attr_value_changed_ev_data(data)
+    logging.debug("%s %r %r", gatts_attr_value_changed_ev_.__name__,
+                  handle, data)
+    data = binascii.hexlify(data[0]).decode().upper()
+    return handle, data
+
+
+GATT_EV = {
+    defs.GATT_EV_NOTIFICATION: gattc_notification_ev_,
+    defs.GATT_EV_ATTR_VALUE_CHANGED: gatts_attr_value_changed_ev_,
+}
 
 
 def l2cap_command_rsp_succ(iutctl: IutCtl, op=None):
@@ -2779,8 +2777,10 @@ def mesh_proxy_identity(iutctl: IutCtl):
     iutctl.btp_worker.send_wait_rsp(*MESH['proxy_identity'])
 
 
-def mesh_out_number_action_ev(mesh, data, data_len):
+def mesh_out_number_action_ev(stack, data, data_len):
     logging.debug("%s %r", mesh_out_number_action_ev.__name__, data)
+
+    mesh = stack.mesh
 
     action, number = struct.unpack_from('<HI', data)
 
@@ -2788,8 +2788,10 @@ def mesh_out_number_action_ev(mesh, data, data_len):
     mesh.oob_data.data = number
 
 
-def mesh_out_string_action_ev(mesh, data, data_len):
+def mesh_out_string_action_ev(stack, data, data_len):
     logging.debug("%s %r", mesh_out_string_action_ev.__name__, data)
+
+    mesh = stack.mesh
 
     hdr_fmt = '<B'
     hdr_len = struct.calcsize(hdr_fmt)
@@ -2800,14 +2802,18 @@ def mesh_out_string_action_ev(mesh, data, data_len):
     mesh.oob_data.data = string
 
 
-def mesh_in_action_ev(mesh, data, data_len):
+def mesh_in_action_ev(stack, data, data_len):
     logging.debug("%s %r", mesh_in_action_ev.__name__, data)
+
+    mesh = stack.mesh
 
     action, size = struct.unpack('<HB', data)
 
 
-def mesh_provisioned_ev(mesh, data, data_len):
+def mesh_provisioned_ev(stack, data, data_len):
     logging.debug("%s %r", mesh_provisioned_ev.__name__, data)
+
+    mesh = stack.mesh
 
     mesh.is_provisioned.data = True
 
@@ -2816,16 +2822,20 @@ def mesh_provisioned_ev(mesh, data, data_len):
         mesh_proxy_identity()
 
 
-def mesh_prov_link_open_ev(mesh, data, data_len):
+def mesh_prov_link_open_ev(stack, data, data_len):
     logging.debug("%s %r", mesh_prov_link_open_ev.__name__, data)
+
+    mesh = stack.mesh
 
     (bearer,) = struct.unpack('<B', data)
 
     mesh.last_seen_prov_link_state.data = ('open', bearer)
 
 
-def mesh_prov_link_closed_ev(mesh, data, data_len):
+def mesh_prov_link_closed_ev(stack, data, data_len):
     logging.debug("%s %r", mesh_prov_link_closed_ev.__name__, data)
+
+    mesh = stack.mesh
 
     (bearer,) = struct.unpack('<B', data)
 
@@ -2840,7 +2850,9 @@ def mesh_iv_test_mode_autoinit(iutctl: IutCtl):
     iutctl.stack.mesh.iv_test_mode_autoinit = True
 
 
-def mesh_net_rcv_ev(mesh, data, data_len):
+def mesh_net_rcv_ev(stack, data, data_len):
+    mesh = stack.mesh
+
     if not mesh.net_recv_ev_store.data:
         return
 
@@ -2856,8 +2868,10 @@ def mesh_net_rcv_ev(mesh, data, data_len):
     mesh.net_recv_ev_data.data = (ttl, ctl, src, dst, payload)
 
 
-def mesh_invalid_bearer_ev(mesh, data, data_len):
+def mesh_invalid_bearer_ev(stack, data, data_len):
     logging.debug("%s %r %r", mesh_invalid_bearer_ev.__name__, data, data_len)
+
+    mesh = stack.mesh
 
     hdr_fmt = '<B'
     hdr_len = struct.calcsize(hdr_fmt)
@@ -2867,8 +2881,10 @@ def mesh_invalid_bearer_ev(mesh, data, data_len):
     mesh.prov_invalid_bearer_rcv.data = True
 
 
-def mesh_incomp_timer_exp_ev(mesh, data, data_len):
+def mesh_incomp_timer_exp_ev(stack, data, data_len):
     logging.debug("%s", mesh_incomp_timer_exp_ev.__name__)
+
+    mesh = stack.mesh
 
     mesh.incomp_timer_exp.data = True
 
@@ -2913,15 +2929,18 @@ class BTPEventListener:
 class BTPEventHandler:
     def __init__(self, iutctl: IutCtl):
         self.iutctl = iutctl
-        self.gap_listeners = defaultdict(list)
+        self.listeners = defaultdict(lambda: defaultdict(list))
         self.executor = ThreadPoolExecutor()
+        self.callbacks = {
+            defs.BTP_SERVICE_ID_GAP: GAP_EV,
+            defs.BTP_SERVICE_ID_GATT: GATT_EV,
+            defs.BTP_SERVICE_ID_MESH: MESH_EV,
+        }
 
     def wait_for_event(self, svc_id, op, f):
         listener = BTPEventListener(f)
-
-        if svc_id == defs.BTP_SERVICE_ID_GAP:
-            self.gap_listeners[op].append(listener)
-            return self.executor.submit(listener.acquire)
+        self.listeners[svc_id][op].append(listener)
+        return self.executor.submit(listener.acquire)
 
     def __call__(self, hdr, data):
         logging.debug("%s %r %r", BTPEventHandler.__name__, hdr, data)
@@ -2931,25 +2950,22 @@ class BTPEventHandler:
             logging.info("Stack not initialized")
             return False
 
-        if hdr.svc_id == defs.BTP_SERVICE_ID_MESH:
-            if hdr.op in MESH_EV and stack.mesh:
-                cb = MESH_EV[hdr.op]
-                cb(stack.mesh, data[0], hdr.data_len)
-                return True
-        elif hdr.svc_id == defs.BTP_SERVICE_ID_GAP:
-            if hdr.op in GAP_EV and stack.gap:
-                cb = GAP_EV[hdr.op]
-                ret = cb(stack.gap, data[0], hdr.data_len)
-                listeners = self.gap_listeners[hdr.op]
-                to_remove = []
-                for listener in listeners:
-                    if listener.verify(ret):
-                        listener.release()
-                        to_remove.append(listener)
+        if hdr.svc_id not in self.callbacks or \
+                hdr.op not in self.callbacks[hdr.svc_id]:
+            # TODO: Raise BTP error instead of logging
+            logging.error("Unhandled event! svc_id %s op %s",
+                          hdr.svc_id, hdr.op)
+            return False
 
-                self.gap_listeners[hdr.op] = list(set(listeners)-set(to_remove))
-                return True
+        cb = self.callbacks[hdr.svc_id][hdr.op]
+        ret = cb(stack, data[0], hdr.data_len)
+        listeners = self.listeners[hdr.svc_id][hdr.op]
+        to_remove = []
+        for listener in listeners:
+            if listener.verify(ret):
+                listener.release()
+                to_remove.append(listener)
 
-        # TODO: Raise BTP error instead of logging
-        logging.error("Unhandled event! svc_id %s op %s", hdr.svc_id, hdr.op)
-        return False
+        self.listeners[hdr.svc_id][hdr.op] = \
+            list(set(listeners)-set(to_remove))
+        return True

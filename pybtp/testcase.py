@@ -45,6 +45,16 @@ def verify_address(args, addr: BleAddress):
     return peer_addr == addr
 
 
+def verify_value_changed_ev(args, handle, value):
+    return args[0] == handle and args[1] == value
+
+
+def verify_notification_ev(args, addr: BleAddress, type, handle, data):
+    logging.debug("%r %r %r %r %r", args, addr, type, handle, data)
+    return args[0] == addr and args[1] == type and \
+           args[2] == handle and args[3] == data
+
+
 def connection_procedure(testcase, central, peripheral):
     btp.gap_set_conn(peripheral)
     btp.gap_set_gendiscov(peripheral)
@@ -707,14 +717,16 @@ class GAPTestCase(BTPTestCase):
                         chr.value_handle,
                         new_value)
 
+        future_lt = btp.gatts_attr_value_changed_ev(self.lt)
+
         val = GattValue()
         btp.gattc_write_rsp(self.iut, val)
         self.assertEqual(val.att_rsp, "No error")
 
-        hdl, data = btp.gatts_attr_value_changed_ev(self.lt)
-        recv_val = binascii.hexlify(data[0]).decode().upper()
+        wait_futures([future_lt], timeout=20)
 
-        self.assertEqual(recv_val, new_value)
+        hdl, data = future_lt.result()
+        self.assertEqual(data, new_value)
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
@@ -775,14 +787,16 @@ class GAPTestCase(BTPTestCase):
                         dsc.handle,
                         new_value)
 
+        future_lt = btp.gatts_attr_value_changed_ev(self.lt)
+
         val = GattValue()
         btp.gattc_write_rsp(self.iut, val)
         self.assertEqual(val.att_rsp, "No error")
 
-        hdl, data = btp.gatts_attr_value_changed_ev(self.lt)
-        recv_val = binascii.hexlify(data[0]).decode().upper()
+        wait_futures([future_lt], timeout=20)
 
-        self.assertEqual(recv_val, new_value)
+        hdl, data = future_lt.result()
+        self.assertEqual(data, new_value)
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
@@ -816,14 +830,16 @@ class GAPTestCase(BTPTestCase):
                              chr.value_handle,
                              0, new_value)
 
+        future_lt = btp.gatts_attr_value_changed_ev(self.lt)
+
         val = GattValue()
         btp.gattc_write_long_rsp(self.iut, val)
         self.assertEqual(val.att_rsp, "No error")
 
-        hdl, data = btp.gatts_attr_value_changed_ev(self.lt)
-        recv_val = binascii.hexlify(data[0]).decode().upper()
+        wait_futures([future_lt], timeout=20)
 
-        self.assertEqual(recv_val, new_value)
+        hdl, data = future_lt.result()
+        self.assertEqual(data, new_value)
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
@@ -884,14 +900,16 @@ class GAPTestCase(BTPTestCase):
                              dsc.handle,
                              0, new_value)
 
+        future_lt = btp.gatts_attr_value_changed_ev(self.lt)
+
         val = GattValue()
         btp.gattc_write_long_rsp(self.iut, val)
         self.assertEqual(val.att_rsp, "No error")
 
-        hdl, data = btp.gatts_attr_value_changed_ev(self.lt)
-        recv_val = binascii.hexlify(data[0]).decode().upper()
+        wait_futures([future_lt], timeout=20)
 
-        self.assertEqual(recv_val, new_value)
+        hdl, data = future_lt.result()
+        self.assertEqual(data, new_value)
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
@@ -907,27 +925,22 @@ class GAPTestCase(BTPTestCase):
 
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
+        db = GattDB()
         btp.gattc_disc_chrc_uuid(self.iut,
                                  self.lt.stack.gap.iut_addr_get(),
                                  0x0001, 0xffff, PTS_DB.CHR_READ_WRITE)
-
-        db = GattDB()
         btp.gattc_disc_chrc_uuid_rsp(self.iut, db)
-
         db.print_db()
 
         chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
         self.assertIsNotNone(chr)
-
         end_hdl = db.find_characteristic_end(chr.handle)
         self.assertIsNotNone(end_hdl)
 
         btp.gattc_disc_all_desc(self.iut,
                                 self.lt.stack.gap.iut_addr_get(),
                                 chr.value_handle + 1, end_hdl)
-
         btp.gattc_disc_all_desc_rsp(self.iut, db)
-
         db.print_db()
 
         dsc = db.find_dsc_by_uuid(UUID.CCC)
@@ -936,18 +949,15 @@ class GAPTestCase(BTPTestCase):
         btp.gattc_cfg_notify(self.iut,
                              self.lt.stack.gap.iut_addr_get(),
                              1, dsc.handle)
-
         time.sleep(1)
+        future_iut = btp.gattc_notification_ev(self.iut)
+        btp.gatts_set_val(self.lt, char_id, "0001")
+        wait_futures([future_iut], timeout=20)
 
-        btp.gatts_set_val(self.lt,
-                          char_id,
-                          "0001")
-
-        btp.gattc_notification_ev(self.iut,
-                                  self.lt.stack.gap.iut_addr_get(),
-                                  0x01,
-                                  chr.value_handle,
-                                  "0001")
+        result = future_iut.result()
+        self.assertTrue(verify_notification_ev(result,
+                                               self.lt.stack.gap.iut_addr_get(),
+                                               0x01, chr.value_handle, "0001"))
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
@@ -963,27 +973,22 @@ class GAPTestCase(BTPTestCase):
 
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
+        db = GattDB()
         btp.gattc_disc_chrc_uuid(self.iut,
                                  self.lt.stack.gap.iut_addr_get(),
                                  0x0001, 0xffff, PTS_DB.CHR_READ_WRITE)
-
-        db = GattDB()
         btp.gattc_disc_chrc_uuid_rsp(self.iut, db)
-
         db.print_db()
 
         chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
         self.assertIsNotNone(chr)
-
         end_hdl = db.find_characteristic_end(chr.handle)
         self.assertIsNotNone(end_hdl)
 
         btp.gattc_disc_all_desc(self.iut,
                                 self.lt.stack.gap.iut_addr_get(),
                                 chr.value_handle + 1, end_hdl)
-
         btp.gattc_disc_all_desc_rsp(self.iut, db)
-
         db.print_db()
 
         dsc = db.find_dsc_by_uuid(UUID.CCC)
@@ -992,18 +997,17 @@ class GAPTestCase(BTPTestCase):
         btp.gattc_cfg_indicate(self.iut,
                                self.lt.stack.gap.iut_addr_get(),
                                1, dsc.handle)
-
         time.sleep(1)
+        btp.gatts_set_val(self.lt, char_id, "0001")
 
-        btp.gatts_set_val(self.lt,
-                          char_id,
-                          "0001")
+        future_iut = btp.gattc_notification_ev(self.iut)
+        btp.gatts_set_val(self.lt, char_id, "0001")
+        wait_futures([future_iut], timeout=20)
 
-        btp.gattc_notification_ev(self.iut,
-                                  self.lt.stack.gap.iut_addr_get(),
-                                  0x02,
-                                  chr.value_handle,
-                                  "0001")
+        result = future_iut.result()
+        self.assertTrue(verify_notification_ev(result,
+                                               self.lt.stack.gap.iut_addr_get(),
+                                               0x02, chr.value_handle, "0001"))
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
