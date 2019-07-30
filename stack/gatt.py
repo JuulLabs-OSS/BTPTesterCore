@@ -161,6 +161,28 @@ class GattCharacteristicDescriptor(GattAttribute):
                                self.value)
 
 
+class GattValue:
+    def __init__(self):
+        self._att_rsp = None
+        self._val = None
+
+    @property
+    def value(self):
+        return self._val
+
+    @value.setter
+    def value(self, new_val):
+        self._val = new_val
+
+    @property
+    def att_rsp(self):
+        return self._att_rsp
+
+    @att_rsp.setter
+    def att_rsp(self, new_val):
+        self._att_rsp = new_val
+
+
 class GattDB:
     def __init__(self):
         self.db = dict()

@@ -9,7 +9,7 @@ from pybtp.btp import parse_ad, ad_find_uuid16
 from pybtp.types import IOCap, AdType, UUID, PTS_DB, Prop, Perm
 from pybtp.utils import wait_futures
 from stack.gap import BleAddress
-from stack.gatt import GattDB
+from stack.gatt import GattDB, GattValue
 
 
 def preconditions(iutctl):
@@ -507,11 +507,11 @@ class GAPTestCase(BTPTestCase):
                        self.lt.stack.gap.iut_addr_get(),
                        chr.value_handle)
 
-        btp.gattc_read_rsp(self.iut, store_rsp=True, store_val=True)
+        val = GattValue()
+        btp.gattc_read_rsp(self.iut, val)
 
-        verify_values = self.iut.stack.gatt.verify_values
-        self.assertEqual(verify_values[0], "No error")
-        self.assertEqual(verify_values[1], value)
+        self.assertEqual(val.att_rsp, "No error")
+        self.assertEqual(val.value, value)
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
@@ -570,11 +570,11 @@ class GAPTestCase(BTPTestCase):
                        self.lt.stack.gap.iut_addr_get(),
                        dsc.handle)
 
-        btp.gattc_read_rsp(self.iut, store_rsp=True, store_val=True)
+        val = GattValue()
+        btp.gattc_read_rsp(self.iut, val)
 
-        verify_values = self.iut.stack.gatt.verify_values
-        self.assertEqual(verify_values[0], "No error")
-        self.assertEqual(verify_values[1], value)
+        self.assertEqual(val.att_rsp, "No error")
+        self.assertEqual(val.value, value)
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
@@ -606,11 +606,11 @@ class GAPTestCase(BTPTestCase):
                             self.lt.stack.gap.iut_addr_get(),
                             chr.value_handle, 0)
 
-        btp.gattc_read_long_rsp(self.iut, store_rsp=True, store_val=True)
+        val = GattValue()
+        btp.gattc_read_long_rsp(self.iut, val)
 
-        verify_values = self.iut.stack.gatt.verify_values
-        self.assertEqual(verify_values[0], "No error")
-        self.assertEqual(verify_values[1], value)
+        self.assertEqual(val.att_rsp, "No error")
+        self.assertEqual(val.value, value)
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
@@ -669,11 +669,11 @@ class GAPTestCase(BTPTestCase):
                             self.lt.stack.gap.iut_addr_get(),
                             dsc.handle, 0)
 
-        btp.gattc_read_long_rsp(self.iut, store_rsp=True, store_val=True)
+        val = GattValue()
+        btp.gattc_read_long_rsp(self.iut, val)
 
-        verify_values = self.iut.stack.gatt.verify_values
-        self.assertEqual(verify_values[0], "No error")
-        self.assertEqual(verify_values[1], value)
+        self.assertEqual(val.att_rsp, "No error")
+        self.assertEqual(val.value, value)
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
@@ -707,10 +707,9 @@ class GAPTestCase(BTPTestCase):
                         chr.value_handle,
                         new_value)
 
-        btp.gattc_write_rsp(self.iut, store_rsp=True)
-
-        verify_values = self.iut.stack.gatt.verify_values
-        self.assertEqual(verify_values[0], "No error")
+        val = GattValue()
+        btp.gattc_write_rsp(self.iut, val)
+        self.assertEqual(val.att_rsp, "No error")
 
         hdl, data = btp.gatts_attr_value_changed_ev(self.lt)
         recv_val = binascii.hexlify(data[0]).decode().upper()
@@ -776,10 +775,9 @@ class GAPTestCase(BTPTestCase):
                         dsc.handle,
                         new_value)
 
-        btp.gattc_write_rsp(self.iut, store_rsp=True)
-
-        verify_values = self.iut.stack.gatt.verify_values
-        self.assertEqual(verify_values[0], "No error")
+        val = GattValue()
+        btp.gattc_write_rsp(self.iut, val)
+        self.assertEqual(val.att_rsp, "No error")
 
         hdl, data = btp.gatts_attr_value_changed_ev(self.lt)
         recv_val = binascii.hexlify(data[0]).decode().upper()
@@ -818,10 +816,9 @@ class GAPTestCase(BTPTestCase):
                              chr.value_handle,
                              0, new_value)
 
-        btp.gattc_write_long_rsp(self.iut, store_rsp=True)
-
-        verify_values = self.iut.stack.gatt.verify_values
-        self.assertEqual(verify_values[0], "No error")
+        val = GattValue()
+        btp.gattc_write_long_rsp(self.iut, val)
+        self.assertEqual(val.att_rsp, "No error")
 
         hdl, data = btp.gatts_attr_value_changed_ev(self.lt)
         recv_val = binascii.hexlify(data[0]).decode().upper()
@@ -887,10 +884,9 @@ class GAPTestCase(BTPTestCase):
                              dsc.handle,
                              0, new_value)
 
-        btp.gattc_write_long_rsp(self.iut, store_rsp=True)
-
-        verify_values = self.iut.stack.gatt.verify_values
-        self.assertEqual(verify_values[0], "No error")
+        val = GattValue()
+        btp.gattc_write_long_rsp(self.iut, val)
+        self.assertEqual(val.att_rsp, "No error")
 
         hdl, data = btp.gatts_attr_value_changed_ev(self.lt)
         recv_val = binascii.hexlify(data[0]).decode().upper()

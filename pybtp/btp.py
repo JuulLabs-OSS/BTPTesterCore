@@ -27,7 +27,7 @@ from common.iutctl import IutCtl
 from pybtp import defs
 from stack.gap import LeAdv, BleAddress, ConnParams
 from stack.gatt import GattDB, GattPrimary, GattSecondary, GattCharacteristic, \
-    GattServiceIncluded, GattCharacteristicDescriptor
+    GattServiceIncluded, GattCharacteristicDescriptor, GattValue
 from .types import BTPError, gap_settings_btp2txt, Addr, UUID, AdType
 
 CONTROLLER_INDEX = 0
@@ -2285,12 +2285,8 @@ att_rsp_str = {0: "No error",
                }
 
 
-def gattc_read_rsp(iutctl: IutCtl, store_rsp=False, store_val=False,
-                   timeout=None):
-    if timeout:
-        tuple_hdr, tuple_data = iutctl.btp_worker.read(timeout)
-    else:
-        tuple_hdr, tuple_data = iutctl.btp_worker.read()
+def gattc_read_rsp(iutctl: IutCtl, gatt_value: GattValue):
+    tuple_hdr, tuple_data = iutctl.btp_worker.read()
     logging.debug("%s received %r %r", gattc_read_rsp.__name__, tuple_hdr,
                   tuple_data)
 
@@ -2299,19 +2295,14 @@ def gattc_read_rsp(iutctl: IutCtl, store_rsp=False, store_val=False,
     rsp, value = gatt_dec_read_rsp(tuple_data[0])
     logging.debug("%s %r %r", gattc_read_rsp.__name__, rsp, value)
 
-    if store_rsp or store_val:
-        gatt = iutctl.stack.gatt
-        gatt.clear_verify_values()
-        val = binascii.hexlify(value[0]).decode().upper()
+    if not gatt_value:
+        return
 
-        if store_rsp:
-            gatt.add_verify_values(att_rsp_str[rsp])
-
-        if store_val:
-            gatt.add_verify_values(val)
+    gatt_value.att_rsp = att_rsp_str[rsp]
+    gatt_value.value = binascii.hexlify(value[0]).decode().upper()
 
 
-def gattc_read_long_rsp(iutctl: IutCtl, store_rsp=False, store_val=False):
+def gattc_read_long_rsp(iutctl: IutCtl, gatt_value: GattValue):
     tuple_hdr, tuple_data = iutctl.btp_worker.read()
     logging.debug("%s received %r %r", gattc_read_long_rsp.__name__, tuple_hdr,
                   tuple_data)
@@ -2321,16 +2312,11 @@ def gattc_read_long_rsp(iutctl: IutCtl, store_rsp=False, store_val=False):
     rsp, value = gatt_dec_read_rsp(tuple_data[0])
     logging.debug("%s %r %r", gattc_read_long_rsp.__name__, rsp, value)
 
-    if store_rsp or store_val:
-        gatt = iutctl.stack.gatt
-        gatt.clear_verify_values()
-        val = binascii.hexlify(value[0]).decode().upper()
+    if not gatt_value:
+        return
 
-        if store_rsp:
-            gatt.add_verify_values(att_rsp_str[rsp])
-
-        if store_val:
-            gatt.add_verify_values(val)
+    gatt_value.att_rsp = att_rsp_str[rsp]
+    gatt_value.value = binascii.hexlify(value[0]).decode().upper()
 
 
 def gattc_read_multiple_rsp(iutctl: IutCtl, store_val=False, store_rsp=False):
@@ -2355,11 +2341,8 @@ def gattc_read_multiple_rsp(iutctl: IutCtl, store_val=False, store_rsp=False):
             gatt.add_verify_values((binascii.hexlify(values[0])).upper())
 
 
-def gattc_write_rsp(iutctl: IutCtl, store_rsp=False, timeout=None):
-    if timeout:
-        tuple_hdr, tuple_data = iutctl.btp_worker.read(timeout)
-    else:
-        tuple_hdr, tuple_data = iutctl.btp_worker.read()
+def gattc_write_rsp(iutctl: IutCtl, gatt_value: GattValue):
+    tuple_hdr, tuple_data = iutctl.btp_worker.read()
     logging.debug("%s received %r %r", gattc_write_rsp.__name__, tuple_hdr,
                   tuple_data)
 
@@ -2368,13 +2351,13 @@ def gattc_write_rsp(iutctl: IutCtl, store_rsp=False, timeout=None):
     rsp = gatt_dec_write_rsp(tuple_data[0])
     logging.debug("%s %r", gattc_write_rsp.__name__, rsp)
 
-    if store_rsp:
-        gatt = iutctl.stack.gatt
-        gatt.clear_verify_values()
-        gatt.add_verify_values(att_rsp_str[rsp])
+    if not gatt_value:
+        return
+
+    gatt_value.att_rsp = att_rsp_str[rsp]
 
 
-def gattc_write_long_rsp(iutctl: IutCtl, store_rsp=False):
+def gattc_write_long_rsp(iutctl: IutCtl, gatt_value: GattValue):
     tuple_hdr, tuple_data = iutctl.btp_worker.read()
     logging.debug("%s received %r %r", gattc_write_long_rsp.__name__,
                   tuple_hdr, tuple_data)
@@ -2385,10 +2368,10 @@ def gattc_write_long_rsp(iutctl: IutCtl, store_rsp=False):
     rsp = gatt_dec_write_rsp(tuple_data[0])
     logging.debug("%s %r", gattc_write_long_rsp.__name__, rsp)
 
-    if store_rsp:
-        gatt = iutctl.stack.gatt
-        gatt.clear_verify_values()
-        gatt.add_verify_values(att_rsp_str[rsp])
+    if not gatt_value:
+        return
+
+    gatt_value.att_rsp = att_rsp_str[rsp]
 
 
 def l2cap_command_rsp_succ(iutctl: IutCtl, op=None):
