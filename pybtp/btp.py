@@ -573,27 +573,6 @@ def gap_reset(iutctl: IutCtl):
     gap_command_rsp_succ(iutctl)
 
 
-def gap_passkey_entry_req_ev(iutctl: IutCtl, bd_addr: BleAddress):
-    logging.debug("%s %r", gap_passkey_entry_req_ev.__name__, bd_addr)
-
-    tuple_hdr, tuple_data = iutctl.btp_worker.read()
-    logging.debug("received %r %r", tuple_hdr, tuple_data)
-
-    btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GAP,
-                  defs.GAP_EV_PASSKEY_ENTRY_REQ)
-
-    fmt = '<B6s'
-    if len(tuple_data[0]) != struct.calcsize(fmt):
-        raise BTPError("Invalid data length")
-
-    # Unpack and swap address
-    _addr_type, _addr = struct.unpack(fmt, tuple_data[0])
-    _addr = binascii.hexlify(_addr[::-1]).lower().decode()
-
-    if _addr_type != bd_addr.addr_type or _addr != bd_addr.addr:
-        raise BTPError("Received data mismatch")
-
-
 def gap_passkey_confirm(iutctl: IutCtl, bd_addr: BleAddress, match):
     logging.debug("%s %r", gap_passkey_confirm.__name__, bd_addr)
 
@@ -882,6 +861,13 @@ def gap_new_settings_ev_(gap, data, data_len):
     __gap_current_settings_update(gap, curr_set)
 
 
+def gap_device_found_ev(iutctl: IutCtl, verify_f):
+    logging.debug("%s", gap_device_found_ev.__name__)
+    return iutctl.event_handler.wait_for_event(defs.BTP_SERVICE_ID_GAP,
+                                               defs.GAP_EV_DEVICE_FOUND,
+                                               verify_f)
+
+
 def gap_device_found_ev_(gap, data, data_len):
     logging.debug("%s %r", gap_device_found_ev_.__name__, data)
 
@@ -899,8 +885,17 @@ def gap_device_found_ev_(gap, data, data_len):
 
     logging.debug("found %r type %r eir %r", addr, addr_type, eir)
 
-    gap.found_devices.data.append(LeAdv(BleAddress(addr, addr_type), rssi,
-                                        flags, eir))
+    le_adv = LeAdv(BleAddress(addr, addr_type), rssi, flags, eir)
+    gap.found_devices.data.append(le_adv)
+
+    return le_adv
+
+
+def gap_connected_ev(iutctl: IutCtl, verify_f=None):
+    logging.debug("%s", gap_connected_ev.__name__)
+    return iutctl.event_handler.wait_for_event(defs.BTP_SERVICE_ID_GAP,
+                                               defs.GAP_EV_DEVICE_CONNECTED,
+                                               verify_f)
 
 
 def gap_connected_ev_(gap, data, data_len):
@@ -914,8 +909,19 @@ def gap_connected_ev_(gap, data, data_len):
 
     logging.debug("connected to %r type %r", addr, addr_type)
 
-    gap.connected(BleAddress(addr, addr_type))
-    gap.set_conn_params(ConnParams(itvl, latency, timeout))
+    addr = BleAddress(addr, addr_type)
+    params = ConnParams(itvl, latency, timeout)
+    gap.connected(addr)
+    gap.set_conn_params(params)
+
+    return addr, params
+
+
+def gap_disconnected_ev(iutctl: IutCtl, verify_f=None):
+    logging.debug("%s", gap_disconnected_ev.__name__)
+    return iutctl.event_handler.wait_for_event(defs.BTP_SERVICE_ID_GAP,
+                                               defs.GAP_EV_DEVICE_DISCONNECTED,
+                                               verify_f)
 
 
 def gap_disconnected_ev_(gap, data, data_len):
@@ -929,7 +935,38 @@ def gap_disconnected_ev_(gap, data, data_len):
 
     logging.debug("disconnected from %r type %r", addr, addr_type)
 
-    gap.disconnected(BleAddress(addr, addr_type))
+    addr = BleAddress(addr, addr_type)
+    gap.disconnected(addr)
+
+    return addr,
+
+
+def gap_passkey_entry_req_ev(iutctl: IutCtl, verify_f):
+    logging.debug("%s", gap_passkey_entry_req_ev.__name__)
+    return iutctl.event_handler.wait_for_event(defs.BTP_SERVICE_ID_GAP,
+                                               defs.GAP_EV_PASSKEY_ENTRY_REQ,
+                                               verify_f)
+
+
+def gap_passkey_entry_req_ev_(gap, data, data_len):
+    logging.debug("%s %r", gap_passkey_entry_req_ev_.__name__, data)
+
+    fmt = '<B6s'
+    if len(data) != struct.calcsize(fmt):
+        raise BTPError("Invalid data length")
+
+    # Unpack and swap address
+    _addr_type, _addr = struct.unpack(fmt, data)
+    _addr = binascii.hexlify(_addr[::-1]).decode()
+
+    return BleAddress(_addr, _addr_type),
+
+
+def gap_passkey_disp_ev(iutctl: IutCtl, verify_f):
+    logging.debug("%s", gap_passkey_disp_ev.__name__)
+    return iutctl.event_handler.wait_for_event(defs.BTP_SERVICE_ID_GAP,
+                                               defs.GAP_EV_PASSKEY_DISPLAY,
+                                               verify_f)
 
 
 def gap_passkey_disp_ev_(gap, data, data_len):
@@ -938,30 +975,43 @@ def gap_passkey_disp_ev_(gap, data, data_len):
     fmt = '<B6sI'
 
     addr_type, addr, passkey = struct.unpack(fmt, data)
-    addr = binascii.hexlify(addr[::-1])
+    addr = binascii.hexlify(addr[::-1]).decode()
 
     logging.debug("passkey = %r", passkey)
 
     gap.passkey.data = passkey
 
+    return BleAddress(addr, addr_type), passkey
+
+
+def gap_passkey_confirm_req_ev(iutctl: IutCtl, verify_f):
+    logging.debug("%s", gap_passkey_confirm_req_ev.__name__)
+    return iutctl.event_handler.wait_for_event(defs.BTP_SERVICE_ID_GAP,
+                                               defs.GAP_EV_PASSKEY_CONFIRM_REQ,
+                                               verify_f)
+
 
 def gap_passkey_confirm_req_ev_(gap, data, data_len):
-    logging.debug("%s %r", gap_passkey_disp_ev_.__name__, data)
+    logging.debug("%s %r", gap_passkey_confirm_req_ev_.__name__, data)
 
     fmt = '<B6sI'
 
     addr_type, addr, passkey = struct.unpack(fmt, data)
-    addr = binascii.hexlify(addr[::-1])
+    addr = binascii.hexlify(addr[::-1]).decode()
 
-    logging.debug("passkey = %r", passkey)
+    bleaddr = BleAddress(addr, addr_type)
+    logging.debug("addr=%r passkey=%r", bleaddr, passkey)
 
     gap.passkey.data = passkey
 
+    return bleaddr, passkey
 
-def gap_conn_param_update_ev(iutctl: IutCtl):
+
+def gap_conn_param_update_ev(iutctl: IutCtl, verify_f):
     logging.debug("%s", gap_conn_param_update_ev.__name__)
-    return iutctl.event_handler.wait_on_event(defs.BTP_SERVICE_ID_GAP,
-                                              defs.GAP_EV_CONN_PARAM_UPDATE)
+    return iutctl.event_handler.wait_for_event(defs.BTP_SERVICE_ID_GAP,
+                                               defs.GAP_EV_CONN_PARAM_UPDATE,
+                                               verify_f)
 
 
 def gap_conn_param_update_ev_(gap, data, data_len):
@@ -974,11 +1024,16 @@ def gap_conn_param_update_ev_(gap, data, data_len):
         raise BTPError("Invalid data length")
 
     _addr_t, _addr, _itvl, _latency, _timeout = struct.unpack_from(fmt, data)
-    _addr = binascii.hexlify(_addr[::-1]).lower()
+    _addr = binascii.hexlify(_addr[::-1]).decode()
 
     logging.debug("received %r", (_addr_t, _addr, _itvl, _latency, _timeout))
 
-    gap.set_conn_params(ConnParams(_itvl, _latency, _timeout))
+    bleaddr = BleAddress(_addr, _addr_t)
+    params = ConnParams(_itvl, _latency, _timeout)
+
+    gap.set_conn_params(params)
+
+    return bleaddr, params
 
 
 GAP_EV = {
@@ -986,6 +1041,7 @@ GAP_EV = {
     defs.GAP_EV_DEVICE_FOUND: gap_device_found_ev_,
     defs.GAP_EV_DEVICE_CONNECTED: gap_connected_ev_,
     defs.GAP_EV_DEVICE_DISCONNECTED: gap_disconnected_ev_,
+    defs.GAP_EV_PASSKEY_ENTRY_REQ: gap_passkey_entry_req_ev_,
     defs.GAP_EV_PASSKEY_DISPLAY: gap_passkey_disp_ev_,
     defs.GAP_EV_PASSKEY_CONFIRM_REQ: gap_passkey_confirm_req_ev_,
     defs.GAP_EV_CONN_PARAM_UPDATE: gap_conn_param_update_ev_,
@@ -2848,14 +2904,27 @@ MESH_EV = {
 
 
 class BTPEventListener:
-    def __init__(self):
+    def __init__(self, verify_f):
         self._sem = threading.Semaphore(value=0)
+        self._verify_f = verify_f
+        self._result = None
 
     def acquire(self):
         self._sem.acquire()
+        return self._result
 
     def release(self):
         self._sem.release()
+
+    def verify(self, args):
+        if self._verify_f:
+            return_val = self._verify_f(args)
+            if return_val:
+                self._result = args
+            return return_val
+        else:
+            self._result = args
+        return True
 
 
 class BTPEventHandler:
@@ -2864,8 +2933,8 @@ class BTPEventHandler:
         self.gap_listeners = defaultdict(list)
         self.executor = ThreadPoolExecutor()
 
-    def wait_on_event(self, svc_id, op):
-        listener = BTPEventListener()
+    def wait_for_event(self, svc_id, op, f):
+        listener = BTPEventListener(f)
 
         if svc_id == defs.BTP_SERVICE_ID_GAP:
             self.gap_listeners[op].append(listener)
@@ -2887,9 +2956,15 @@ class BTPEventHandler:
         elif hdr.svc_id == defs.BTP_SERVICE_ID_GAP:
             if hdr.op in GAP_EV and stack.gap:
                 cb = GAP_EV[hdr.op]
-                cb(stack.gap, data[0], hdr.data_len)
-                for listener in self.gap_listeners[hdr.op]:
-                    listener.release()
+                ret = cb(stack.gap, data[0], hdr.data_len)
+                listeners = self.gap_listeners[hdr.op]
+                to_remove = []
+                for listener in listeners:
+                    if listener.verify(ret):
+                        listener.release()
+                        to_remove.append(listener)
+
+                self.gap_listeners[hdr.op] = list(set(listeners)-set(to_remove))
                 return True
 
         # TODO: Raise BTP error instead of logging

@@ -1,11 +1,14 @@
 import binascii
+import logging
 import os
 import time
 import unittest
-from concurrent.futures import wait
 
 from pybtp import btp
+from pybtp.btp import parse_ad, ad_find_uuid16
 from pybtp.types import IOCap, AdType, UUID, PTS_DB, Prop, Perm
+from pybtp.utils import wait_futures
+from stack.gap import BleAddress
 from stack.gatt import GattDB
 
 
@@ -17,6 +20,31 @@ def preconditions(iutctl):
     btp.gap_read_ctrl_info(iutctl)
 
 
+def find_adv_by_uuid(args, uuid):
+    le_adv = args
+    logging.debug("matching %r", le_adv)
+    ad = parse_ad(le_adv.eir)
+    uuids = ad_find_uuid16(ad)
+
+    return uuid in uuids
+
+
+def verify_conn_params(args, addr: BleAddress,
+                       conn_itvl_min, conn_itvl_max,
+                       conn_latency, supervision_timeout):
+    params = args[1]
+    return verify_address(args, addr) and \
+           (params.conn_itvl >= conn_itvl_min) and \
+           (params.conn_itvl <= conn_itvl_max) and \
+           (params.conn_latency == conn_latency) and \
+           (params.supervision_timeout == supervision_timeout)
+
+
+def verify_address(args, addr: BleAddress):
+    peer_addr = args[0]
+    return peer_addr == addr
+
+
 def connection_procedure(testcase, central, peripheral):
     btp.gap_set_conn(peripheral)
     btp.gap_set_gendiscov(peripheral)
@@ -24,42 +52,47 @@ def connection_procedure(testcase, central, peripheral):
     uuid = os.urandom(2)
     btp.gap_adv_ind_on(peripheral, ad=[(AdType.uuid16_some, uuid)])
 
+    def verify_f(args): return find_adv_by_uuid(args,
+                                                btp.btp2uuid(len(uuid), uuid))
+
     btp.gap_start_discov(central)
-    time.sleep(5)
+    future = btp.gap_device_found_ev(central, verify_f)
+    wait_futures([future], timeout=20)
     btp.gap_stop_discov(central)
-    found = btp.check_discov_results_by_uuid(central,
-                                             btp.btp2uuid(len(uuid), uuid))
+
+    found = future.result()
 
     testcase.assertIsNotNone(found)
     peripheral.stack.gap.iut_addr_set(found.addr)
 
     btp.gap_conn(central, peripheral.stack.gap.iut_addr_get())
 
-    btp.gap_wait_for_connection(central)
-    btp.gap_wait_for_connection(peripheral)
+    def verify_central(args): return verify_address(args, found.addr)
+
+    future_central = btp.gap_connected_ev(central, verify_central)
+    future_peripheral = btp.gap_connected_ev(peripheral)
+
+    wait_futures([future_central, future_peripheral], timeout=20)
 
     testcase.assertTrue(central.stack.gap.is_connected())
     testcase.assertTrue(peripheral.stack.gap.is_connected())
 
 
 def disconnection_procedure(testcase, central, peripheral):
+    periph_addr = peripheral.stack.gap.iut_addr_get()
+
+    def verify_central(args):
+        return verify_address(args, periph_addr)
+
+    future_central = btp.gap_disconnected_ev(central, verify_central)
+    future_peripheral = btp.gap_disconnected_ev(peripheral)
+
     btp.gap_disconn(central, peripheral.stack.gap.iut_addr_get())
 
-    btp.gap_wait_for_disconnection(peripheral)
-    btp.gap_wait_for_disconnection(central)
+    wait_futures([future_central, future_peripheral], timeout=20)
 
     testcase.assertFalse(peripheral.stack.gap.is_connected())
     testcase.assertFalse(central.stack.gap.is_connected())
-
-
-def verify_conn_params(iutctl, conn_itvl_min, conn_itvl_max,
-                       conn_latency, supervision_timeout):
-    params = iutctl.stack.gap.get_conn_params()
-
-    return (params.conn_itvl >= conn_itvl_min) and \
-           (params.conn_itvl <= conn_itvl_max) and \
-           (params.conn_latency == conn_latency) and \
-           (params.supervision_timeout == supervision_timeout)
 
 
 class BTPTestCase(unittest.TestCase):
@@ -172,6 +205,8 @@ class GAPTestCase(BTPTestCase):
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         conn_params = self.iut.stack.gap.get_conn_params()
+        iut_addr = self.iut.stack.gap.iut_addr_get()
+        lt_addr = self.lt.stack.gap.iut_addr_get()
 
         conn_itvl_min, conn_itvl_max, latency, supervision_timeout = (
             conn_params.conn_itvl,
@@ -184,16 +219,19 @@ class GAPTestCase(BTPTestCase):
                                   conn_itvl_min, conn_itvl_max, latency,
                                   supervision_timeout)
 
-        wait([btp.gap_conn_param_update_ev(self.iut),
-              btp.gap_conn_param_update_ev(self.lt)], timeout=20)
+        def verify_iut(args):
+            return verify_conn_params(args, lt_addr, conn_itvl_min,
+                                      conn_itvl_max, latency,
+                                      supervision_timeout)
 
-        self.assertTrue(verify_conn_params(self.iut, conn_itvl_min,
-                                           conn_itvl_max, latency,
-                                           supervision_timeout))
+        def verify_lt(args):
+            return verify_conn_params(args, iut_addr, conn_itvl_min,
+                                      conn_itvl_max, latency,
+                                      supervision_timeout)
 
-        self.assertTrue(verify_conn_params(self.lt, conn_itvl_min,
-                                           conn_itvl_max, latency,
-                                           supervision_timeout))
+        wait_futures([btp.gap_conn_param_update_ev(self.iut, verify_iut),
+                      btp.gap_conn_param_update_ev(self.lt, verify_lt)],
+                     timeout=20)
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
@@ -212,9 +250,24 @@ class GAPTestCase(BTPTestCase):
 
         btp.gap_pair(self.iut, self.lt.stack.gap.iut_addr_get())
 
-        pk_iut = self.iut.stack.gap.get_passkey(timeout=20)
+        iut_addr = self.iut.stack.gap.iut_addr_get()
+        lt_addr = self.lt.stack.gap.iut_addr_get()
+
+        def verify_master(args): return verify_address(args, lt_addr)
+
+        def verify_slave(args): return verify_address(args, iut_addr)
+
+        future_master = btp.gap_passkey_confirm_req_ev(self.iut, verify_master)
+        future_slave = btp.gap_passkey_confirm_req_ev(self.lt, verify_slave)
+
+        wait_futures([future_master, future_slave], timeout=20)
+
+        results_master = future_master.result()
+        results_slave = future_slave.result()
+
+        pk_iut = results_master[1]
         self.assertIsNotNone(pk_iut)
-        pk_lt = self.lt.stack.gap.get_passkey()
+        pk_lt = results_slave[1]
         self.assertIsNotNone(pk_lt)
         self.assertEqual(pk_iut, pk_lt)
 
@@ -235,15 +288,22 @@ class GAPTestCase(BTPTestCase):
         btp.gap_pair(self.iut,
                      self.lt.stack.gap.iut_addr_get())
 
-        pk_lt = self.lt.stack.gap.get_passkey(timeout=20)
+        iut_addr = self.iut.stack.gap.iut_addr_get()
+        lt_addr = self.lt.stack.gap.iut_addr_get()
+
+        def verify_master(args): return verify_address(args, lt_addr)
+
+        def verify_slave(args): return verify_address(args, iut_addr)
+
+        future_slave = btp.gap_passkey_disp_ev(self.lt, verify_slave)
+        future_master = btp.gap_passkey_entry_req_ev(self.iut, verify_master)
+
+        wait_futures([future_master, future_slave], timeout=20)
+        results_slave = future_slave.result()
+        pk_lt = results_slave[1]
         self.assertIsNotNone(pk_lt)
 
-        btp.gap_passkey_entry_req_ev(self.iut,
-                                     self.lt.stack.gap.iut_addr_get())
-
-        btp.gap_passkey_entry_rsp(self.iut,
-                                  self.lt.stack.gap.iut_addr_get(),
-                                  pk_lt)
+        btp.gap_passkey_entry_rsp(self.iut, lt_addr, pk_lt)
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
