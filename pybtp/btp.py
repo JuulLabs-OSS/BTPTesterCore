@@ -831,26 +831,6 @@ def gap_command_rsp_succ(iutctl: IutCtl, op=None):
     return tuple_data
 
 
-def gap_identity_resolved_ev(iutctl: IutCtl):
-    logging.debug("%s", gap_identity_resolved_ev.__name__)
-
-    tuple_hdr, tuple_data = iutctl.btp_worker.read()
-    logging.debug("received %r %r", tuple_hdr, tuple_data)
-
-    btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GAP,
-                  defs.GAP_EV_IDENTITY_RESOLVED)
-
-    fmt = '<B6sB6s'
-    if len(tuple_data[0]) != struct.calcsize(fmt):
-        raise BTPError("Invalid data length")
-
-    _addr_t, _addr, _id_addr_t, _id_addr = struct.unpack_from('<B6sB6s',
-                                                              tuple_data[0])
-    # Convert addresses to lower case
-    _addr = binascii.hexlify(_addr[::-1]).lower().decode()
-    _id_addr = binascii.hexlify(_id_addr[::-1]).lower().decode()
-
-
 def gap_new_settings_ev_(stack, data, data_len):
     logging.debug("%s %r", gap_new_settings_ev_.__name__, data)
 
@@ -1019,6 +999,27 @@ def gap_passkey_confirm_req_ev_(stack, data, data_len):
     return bleaddr, passkey
 
 
+def gap_identity_resolved_ev_(stack, data, data_len):
+    logging.debug("%s", gap_identity_resolved_ev_.__name__)
+
+    fmt = '<B6sB6s'
+    if len(data) != struct.calcsize(fmt):
+        raise BTPError("Invalid data length")
+
+    _addr_t, _addr, _id_addr_t, _id_addr = struct.unpack_from('<B6sB6s', data)
+
+    # Convert addresses to lower case
+    _addr = binascii.hexlify(_addr[::-1]).lower().decode()
+    _id_addr = binascii.hexlify(_id_addr[::-1]).lower().decode()
+
+    ota_addr = BleAddress(_addr, _addr_t)
+    id_addr = BleAddress(_id_addr, _id_addr_t)
+
+    stack.gap.identity_resolved(ota_addr, id_addr)
+
+    return ota_addr, id_addr
+
+
 def gap_conn_param_update_ev(iutctl: IutCtl, verify_f=None):
     logging.debug("%s", gap_conn_param_update_ev.__name__)
     return iutctl.event_handler.wait_for_event(defs.BTP_SERVICE_ID_GAP,
@@ -1058,6 +1059,7 @@ GAP_EV = {
     defs.GAP_EV_PASSKEY_ENTRY_REQ: gap_passkey_entry_req_ev_,
     defs.GAP_EV_PASSKEY_DISPLAY: gap_passkey_disp_ev_,
     defs.GAP_EV_PASSKEY_CONFIRM_REQ: gap_passkey_confirm_req_ev_,
+    defs.GAP_EV_IDENTITY_RESOLVED: gap_identity_resolved_ev_,
     defs.GAP_EV_CONN_PARAM_UPDATE: gap_conn_param_update_ev_,
 }
 

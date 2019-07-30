@@ -178,6 +178,10 @@ class Gap:
     def iut_has_privacy(self):
         return self.current_settings_get("Privacy")
 
+    def identity_resolved(self, ota_addr: BleAddress,
+                          id_addr: BleAddress):
+        pass
+
     def set_conn_params(self, params):
         self.conn_params.data = params
 
