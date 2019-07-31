@@ -245,6 +245,40 @@ class GAPTestCase(BTPTestCase):
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
+    def test_connection_parameter_update_slave(self):
+        connection_procedure(self, central=self.iut, peripheral=self.lt)
+
+        conn_params = self.iut.stack.gap.get_conn_params()
+        iut_addr = self.iut.stack.gap.iut_addr_get()
+        lt_addr = self.lt.stack.gap.iut_addr_get()
+
+        conn_itvl_min, conn_itvl_max, latency, supervision_timeout = (
+            conn_params.conn_itvl,
+            conn_params.conn_itvl,
+            conn_params.conn_latency + 2,
+            conn_params.supervision_timeout)
+
+        btp.gap_conn_param_update(self.lt,
+                                  self.iut.stack.gap.iut_addr_get(),
+                                  conn_itvl_min, conn_itvl_max, latency,
+                                  supervision_timeout)
+
+        def verify_iut(args):
+            return verify_conn_params(args, lt_addr, conn_itvl_min,
+                                      conn_itvl_max, latency,
+                                      supervision_timeout)
+
+        def verify_lt(args):
+            return verify_conn_params(args, iut_addr, conn_itvl_min,
+                                      conn_itvl_max, latency,
+                                      supervision_timeout)
+
+        wait_futures([btp.gap_conn_param_update_ev(self.iut, verify_iut),
+                      btp.gap_conn_param_update_ev(self.lt, verify_lt)],
+                     timeout=20)
+
+        disconnection_procedure(self, central=self.iut, peripheral=self.lt)
+
     def test_pairing_jw(self):
         btp.gap_set_io_cap(self.lt, IOCap.no_input_output)
         connection_procedure(self, central=self.iut, peripheral=self.lt)
