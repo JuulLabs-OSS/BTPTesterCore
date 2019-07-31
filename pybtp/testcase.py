@@ -248,8 +248,29 @@ class GAPTestCase(BTPTestCase):
     def test_pairing_jw(self):
         btp.gap_set_io_cap(self.lt, IOCap.no_input_output)
         connection_procedure(self, central=self.iut, peripheral=self.lt)
+
+        iut_addr = self.iut.stack.gap.iut_addr_get()
+        lt_addr = self.lt.stack.gap.iut_addr_get()
+
+        def verify_iut(args):
+            return verify_address(args, lt_addr)
+
+        def verify_lt(args):
+            return verify_address(args, iut_addr)
+
+        future_iut = btp.gap_sec_level_changed_ev(self.iut, verify_iut)
+        future_lt = btp.gap_sec_level_changed_ev(self.lt, verify_lt)
+
         btp.gap_pair(self.iut, self.lt.stack.gap.iut_addr_get())
-        time.sleep(20)
+
+        wait_futures([future_iut, future_lt], timeout=20)
+
+        _, level = future_iut.result()
+        self.assertEqual(level, 1)
+
+        _, level = future_lt.result()
+        self.assertEqual(level, 1)
+
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
     def test_pairing_numcmp(self):
@@ -287,6 +308,17 @@ class GAPTestCase(BTPTestCase):
         btp.gap_passkey_confirm(self.lt,
                                 self.iut.stack.gap.iut_addr_get(), 1)
 
+        future_master = btp.gap_sec_level_changed_ev(self.iut, verify_master)
+        future_slave = btp.gap_sec_level_changed_ev(self.lt, verify_slave)
+
+        wait_futures([future_master, future_slave], timeout=20)
+
+        _, level = future_master.result()
+        self.assertEqual(level, 3)
+
+        _, level = future_slave.result()
+        self.assertEqual(level, 3)
+
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
     def test_pairing_input(self):
@@ -314,6 +346,17 @@ class GAPTestCase(BTPTestCase):
         self.assertIsNotNone(pk_lt)
 
         btp.gap_passkey_entry_rsp(self.iut, lt_addr, pk_lt)
+
+        future_master = btp.gap_sec_level_changed_ev(self.iut, verify_master)
+        future_slave = btp.gap_sec_level_changed_ev(self.lt, verify_slave)
+
+        wait_futures([future_master, future_slave], timeout=20)
+
+        _, level = future_master.result()
+        self.assertEqual(level, 3)
+
+        _, level = future_slave.result()
+        self.assertEqual(level, 3)
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 

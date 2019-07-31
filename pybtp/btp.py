@@ -1051,6 +1051,34 @@ def gap_conn_param_update_ev_(stack, data, data_len):
     return bleaddr, params
 
 
+def gap_sec_level_changed_ev(iutctl: IutCtl, verify_f=None):
+    logging.debug("%s", gap_sec_level_changed_ev.__name__)
+    return iutctl.event_handler.wait_for_event(defs.BTP_SERVICE_ID_GAP,
+                                               defs.GAP_EV_SEC_LEVEL_CHANGED,
+                                               verify_f)
+
+
+def gap_sec_level_changed_ev_(stack, data, data_len):
+    logging.debug("%s", gap_sec_level_changed_ev_.__name__)
+
+    gap = stack.gap
+
+    logging.debug("received %r", data)
+
+    fmt = '<B6sB'
+    if len(data) != struct.calcsize(fmt):
+        raise BTPError("Invalid data length")
+
+    _addr_t, _addr, _level = struct.unpack_from(fmt, data)
+    _addr = binascii.hexlify(_addr[::-1]).decode()
+
+    logging.debug("received %r", (_addr_t, _addr, _level))
+
+    bleaddr = BleAddress(_addr, _addr_t)
+
+    return bleaddr, _level
+
+
 GAP_EV = {
     defs.GAP_EV_NEW_SETTINGS: gap_new_settings_ev_,
     defs.GAP_EV_DEVICE_FOUND: gap_device_found_ev_,
@@ -1061,6 +1089,7 @@ GAP_EV = {
     defs.GAP_EV_PASSKEY_CONFIRM_REQ: gap_passkey_confirm_req_ev_,
     defs.GAP_EV_IDENTITY_RESOLVED: gap_identity_resolved_ev_,
     defs.GAP_EV_CONN_PARAM_UPDATE: gap_conn_param_update_ev_,
+    defs.GAP_EV_SEC_LEVEL_CHANGED: gap_sec_level_changed_ev_,
 }
 
 
