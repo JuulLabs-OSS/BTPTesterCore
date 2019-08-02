@@ -3,7 +3,8 @@ import unittest
 
 from projects.android.iutctl import AndroidCtl
 from projects.mynewt.iutctl import MynewtCtl
-from pybtp.testcase import GAPTestCase
+from testcases.GattTestCase import GattTestCase
+from testcases.GapTestCase import GapTestCase
 
 
 def main():
@@ -16,18 +17,18 @@ def main():
     logger.setLevel(logging.ERROR)
     logger.addHandler(logging.StreamHandler())
 
-    mynewt1 = MynewtCtl('/dev/ttyACM0', '681569717')
+    mynewt1 = MynewtCtl('/dev/ttyACM0', '683357425')
+    mynewt2 = MynewtCtl('/dev/ttyACM1', '683802616')
+    # mynewt1 = MynewtCtl('/dev/ttyACM0', '681569717')
     # mynewt1 = MynewtCtl('/dev/ttyACM0', '682800200')
-    mynewt2 = MynewtCtl('/dev/ttyACM1', '683357425')
-    # mynewt2 = MynewtCtl('/dev/ttyACM1', '683802616')
     android = AndroidCtl('192.168.9.123', 8765)
 
     def suite():
         suite = unittest.TestSuite()
-        suite.addTest(GAPTestCase('test_gattc_discover_chrc_uuid',
-                                  android, mynewt1))
-        # suite.addTests(GAPTestCase.init_testcases(android, mynewt1))
-        # suite.addTests(GAPTestCase.init_testcases(mynewt1, android))
+        # suite.addTest(GapTestCase('test_scan',
+        #                           mynewt2, mynewt1))
+        suite.addTests(GapTestCase.init_testcases(mynewt1, mynewt2))
+        suite.addTests(GattTestCase.init_testcases(mynewt1, mynewt2))
         return suite
 
     runner = unittest.TextTestRunner(verbosity=2)
