@@ -1,4 +1,3 @@
-import binascii
 import logging
 import os
 import time
@@ -10,6 +9,8 @@ from pybtp.types import IOCap, AdType, UUID, PTS_DB, Prop, Perm
 from pybtp.utils import wait_futures
 from stack.gap import BleAddress
 from stack.gatt import GattDB, GattValue
+
+EV_TIMEOUT = 20
 
 
 def preconditions(iutctl):
@@ -67,7 +68,7 @@ def connection_procedure(testcase, central, peripheral):
 
     btp.gap_start_discov(central)
     future = btp.gap_device_found_ev(central, verify_f)
-    wait_futures([future], timeout=20)
+    wait_futures([future], timeout=EV_TIMEOUT)
     btp.gap_stop_discov(central)
 
     found = future.result()
@@ -82,7 +83,7 @@ def connection_procedure(testcase, central, peripheral):
     future_central = btp.gap_connected_ev(central, verify_central)
     future_peripheral = btp.gap_connected_ev(peripheral)
 
-    wait_futures([future_central, future_peripheral], timeout=20)
+    wait_futures([future_central, future_peripheral], timeout=EV_TIMEOUT)
 
     testcase.assertTrue(central.stack.gap.is_connected())
     testcase.assertTrue(peripheral.stack.gap.is_connected())
@@ -99,7 +100,7 @@ def disconnection_procedure(testcase, central, peripheral):
 
     btp.gap_disconn(central, peripheral.stack.gap.iut_addr_get())
 
-    wait_futures([future_central, future_peripheral], timeout=20)
+    wait_futures([future_central, future_peripheral], timeout=EV_TIMEOUT)
 
     testcase.assertFalse(peripheral.stack.gap.is_connected())
     testcase.assertFalse(central.stack.gap.is_connected())
@@ -228,7 +229,7 @@ class GAPTestCase(BTPTestCase):
 
         btp.gap_pair(self.iut, self.lt.stack.gap.iut_addr_get())
 
-        wait_futures([future_iut, future_lt], timeout=20)
+        wait_futures([future_iut, future_lt], timeout=EV_TIMEOUT)
 
         disconnection_procedure(self, central=self.lt, peripheral=self.iut)
 
@@ -242,7 +243,7 @@ class GAPTestCase(BTPTestCase):
 
         btp.gap_conn(self.lt, self.iut.stack.gap.iut_addr_get())
 
-        wait_futures([future_central, future_peripheral], timeout=20)
+        wait_futures([future_central, future_peripheral], timeout=EV_TIMEOUT)
 
         self.assertTrue(self.lt.stack.gap.is_connected())
         self.assertTrue(self.iut.stack.gap.is_connected())
@@ -279,7 +280,7 @@ class GAPTestCase(BTPTestCase):
 
         wait_futures([btp.gap_conn_param_update_ev(self.iut, verify_iut),
                       btp.gap_conn_param_update_ev(self.lt, verify_lt)],
-                     timeout=20)
+                     timeout=EV_TIMEOUT)
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
@@ -313,7 +314,7 @@ class GAPTestCase(BTPTestCase):
 
         wait_futures([btp.gap_conn_param_update_ev(self.iut, verify_iut),
                       btp.gap_conn_param_update_ev(self.lt, verify_lt)],
-                     timeout=20)
+                     timeout=EV_TIMEOUT)
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
@@ -335,7 +336,7 @@ class GAPTestCase(BTPTestCase):
 
         btp.gap_pair(self.iut, self.lt.stack.gap.iut_addr_get())
 
-        wait_futures([future_iut, future_lt], timeout=20)
+        wait_futures([future_iut, future_lt], timeout=EV_TIMEOUT)
 
         _, level = future_iut.result()
         self.assertEqual(level, 1)
@@ -363,7 +364,7 @@ class GAPTestCase(BTPTestCase):
         future_master = btp.gap_passkey_confirm_req_ev(self.iut, verify_master)
         future_slave = btp.gap_passkey_confirm_req_ev(self.lt, verify_slave)
 
-        wait_futures([future_master, future_slave], timeout=20)
+        wait_futures([future_master, future_slave], timeout=EV_TIMEOUT)
 
         results_master = future_master.result()
         results_slave = future_slave.result()
@@ -383,7 +384,7 @@ class GAPTestCase(BTPTestCase):
         future_master = btp.gap_sec_level_changed_ev(self.iut, verify_master)
         future_slave = btp.gap_sec_level_changed_ev(self.lt, verify_slave)
 
-        wait_futures([future_master, future_slave], timeout=20)
+        wait_futures([future_master, future_slave], timeout=EV_TIMEOUT)
 
         _, level = future_master.result()
         self.assertEqual(level, 3)
@@ -412,7 +413,7 @@ class GAPTestCase(BTPTestCase):
         future_slave = btp.gap_passkey_disp_ev(self.lt, verify_slave)
         future_master = btp.gap_passkey_entry_req_ev(self.iut, verify_master)
 
-        wait_futures([future_master, future_slave], timeout=20)
+        wait_futures([future_master, future_slave], timeout=EV_TIMEOUT)
         results_slave = future_slave.result()
         pk_lt = results_slave[1]
         self.assertIsNotNone(pk_lt)
@@ -422,7 +423,7 @@ class GAPTestCase(BTPTestCase):
         future_master = btp.gap_sec_level_changed_ev(self.iut, verify_master)
         future_slave = btp.gap_sec_level_changed_ev(self.lt, verify_slave)
 
-        wait_futures([future_master, future_slave], timeout=20)
+        wait_futures([future_master, future_slave], timeout=EV_TIMEOUT)
 
         _, level = future_master.result()
         self.assertEqual(level, 3)
@@ -838,7 +839,7 @@ class GAPTestCase(BTPTestCase):
         btp.gattc_write_rsp(self.iut, val)
         self.assertEqual(val.att_rsp, "No error")
 
-        wait_futures([future_lt], timeout=20)
+        wait_futures([future_lt], timeout=EV_TIMEOUT)
 
         hdl, data = future_lt.result()
         self.assertEqual(data, new_value)
@@ -908,7 +909,7 @@ class GAPTestCase(BTPTestCase):
         btp.gattc_write_rsp(self.iut, val)
         self.assertEqual(val.att_rsp, "No error")
 
-        wait_futures([future_lt], timeout=20)
+        wait_futures([future_lt], timeout=EV_TIMEOUT)
 
         hdl, data = future_lt.result()
         self.assertEqual(data, new_value)
@@ -951,7 +952,7 @@ class GAPTestCase(BTPTestCase):
         btp.gattc_write_long_rsp(self.iut, val)
         self.assertEqual(val.att_rsp, "No error")
 
-        wait_futures([future_lt], timeout=20)
+        wait_futures([future_lt], timeout=EV_TIMEOUT)
 
         hdl, data = future_lt.result()
         self.assertEqual(data, new_value)
@@ -1021,7 +1022,7 @@ class GAPTestCase(BTPTestCase):
         btp.gattc_write_long_rsp(self.iut, val)
         self.assertEqual(val.att_rsp, "No error")
 
-        wait_futures([future_lt], timeout=20)
+        wait_futures([future_lt], timeout=EV_TIMEOUT)
 
         hdl, data = future_lt.result()
         self.assertEqual(data, new_value)
@@ -1067,7 +1068,7 @@ class GAPTestCase(BTPTestCase):
         time.sleep(1)
         future_iut = btp.gattc_notification_ev(self.iut)
         btp.gatts_set_val(self.lt, char_id, "0001")
-        wait_futures([future_iut], timeout=20)
+        wait_futures([future_iut], timeout=EV_TIMEOUT)
 
         result = future_iut.result()
         self.assertTrue(verify_notification_ev(result,
@@ -1117,7 +1118,7 @@ class GAPTestCase(BTPTestCase):
 
         future_iut = btp.gattc_notification_ev(self.iut)
         btp.gatts_set_val(self.lt, char_id, "0001")
-        wait_futures([future_iut], timeout=20)
+        wait_futures([future_iut], timeout=EV_TIMEOUT)
 
         result = future_iut.result()
         self.assertTrue(verify_notification_ev(result,
