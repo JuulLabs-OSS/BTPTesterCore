@@ -192,16 +192,19 @@ class GAPTestCase(BTPTestCase):
     def test_scan(self):
         btp.gap_set_conn(self.lt)
         btp.gap_set_gendiscov(self.lt)
-        btp.gap_adv_ind_on(self.lt,
-                           ad=[(AdType.name_full,
-                                self.lt.stack.gap.name.encode())])
+
+        uuid = os.urandom(2)
+        btp.gap_adv_ind_on(self.lt, ad=[(AdType.uuid16_some, uuid)])
+
+        def verify_f(args):
+            return find_adv_by_uuid(args, btp.btp2uuid(len(uuid), uuid))
 
         btp.gap_start_discov(self.iut)
-        time.sleep(5)
+        future = btp.gap_device_found_ev(self.iut, verify_f)
+        wait_futures([future], timeout=EV_TIMEOUT)
         btp.gap_stop_discov(self.iut)
-        found = btp.check_discov_results_by_name(self.iut,
-                                                 self.lt.stack.gap.name,
-                                                 self.lt.stack.gap.name_short)
+
+        found = future.result()
         self.assertIsNotNone(found)
 
     def test_advertising(self):
