@@ -96,6 +96,9 @@ GAP = {
     "passkey_confirm": (defs.BTP_SERVICE_ID_GAP,
                         defs.GAP_PASSKEY_CONFIRM,
                         CONTROLLER_INDEX),
+    "start_direct_adv": (defs.BTP_SERVICE_ID_GAP,
+                         defs.GAP_START_DIRECT_ADV,
+                         CONTROLLER_INDEX),
     "conn_param_update": (defs.BTP_SERVICE_ID_GAP,
                           defs.GAP_CONN_PARAM_UPDATE,
                           CONTROLLER_INDEX),
@@ -818,6 +821,18 @@ def gap_read_ctrl_info(iutctl: IutCtl):
     logging.debug("IUT name '%s' name short '%s'", name, name_short)
 
     __gap_current_settings_update(iutctl.stack.gap, _curr_set)
+
+
+def gap_start_direct_adv(iutctl: IutCtl, addr: BleAddress, high_duty=False):
+    logging.debug("%s %r %r", gap_start_direct_adv.__name__, addr, high_duty)
+
+    data_ba = bytearray(addr)
+    data_ba.extend([int(high_duty)])
+
+    iutctl.btp_worker.send(*GAP['start_direct_adv'], data=data_ba)
+
+    tuple_data = gap_command_rsp_succ(iutctl, defs.GAP_START_DIRECT_ADV)
+    __gap_current_settings_update(iutctl.stack.gap, tuple_data)
 
 
 def gap_command_rsp_succ(iutctl: IutCtl, op=None):
