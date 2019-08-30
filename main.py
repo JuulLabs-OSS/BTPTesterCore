@@ -17,16 +17,14 @@ def main():
     logger.setLevel(logging.ERROR)
     logger.addHandler(logging.StreamHandler())
 
-    mynewt1 = MynewtCtl('/dev/ttyACM0', '683357425')
-    mynewt2 = MynewtCtl('/dev/ttyACM1', '683802616')
-    # mynewt1 = MynewtCtl('/dev/ttyACM0', '681569717')
-    # mynewt1 = MynewtCtl('/dev/ttyACM0', '682800200')
-    android = AndroidCtl('192.168.9.123', 8765)
+    mynewt1 = MynewtCtl('/dev/ttyACM0', '683802616')
+    mynewt2 = MynewtCtl('/dev/ttyACM1', '683414473')
+    # android = AndroidCtl('192.168.9.123', 8765)
 
     def suite():
         suite = unittest.TestSuite()
-        # suite.addTest(GapTestCase('test_scan',
-        #                           mynewt2, mynewt1))
+        # suite.addTest(GattTestCase('test_gattc_find_incl_svcs',
+        #                            mynewt1, mynewt2))
         suite.addTests(GapTestCase.init_testcases(mynewt1, mynewt2))
         suite.addTests(GattTestCase.init_testcases(mynewt1, mynewt2))
         return suite

@@ -22,10 +22,6 @@ class GattTestCase(BTPTestCase):
         super(__class__, self).tearDown()
 
     def test_gattc_discover_primary_svcs(self):
-        btp.gatts_add_svc(self.lt, 0, PTS_DB.SVC)
-        btp.gatts_add_svc(self.lt, 0, PTS_DB.INC_SVC)
-        btp.gatts_start_server(self.lt)
-
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_prim_svcs(self.iut,
@@ -35,14 +31,10 @@ class GattTestCase(BTPTestCase):
         btp.gattc_disc_prim_svcs_rsp(self.iut, db)
 
         self.assertIsNotNone(db.find_svc_by_uuid(PTS_DB.SVC))
-        self.assertIsNotNone(db.find_svc_by_uuid(PTS_DB.INC_SVC))
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
     def test_gattc_discover_primary_uuid(self):
-        btp.gatts_add_svc(self.lt, 0, PTS_DB.SVC)
-        btp.gatts_start_server(self.lt)
-
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_prim_uuid(self.iut,
@@ -57,11 +49,6 @@ class GattTestCase(BTPTestCase):
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
     def test_gattc_find_incl_svcs(self):
-        inc_id = btp.gatts_add_svc(self.lt, 0, PTS_DB.INC_SVC)
-        btp.gatts_add_svc(self.lt, 0, PTS_DB.SVC)
-        btp.gatts_add_inc_svc(self.lt, inc_id)
-        btp.gatts_start_server(self.lt)
-
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_prim_svcs(self.iut,
@@ -86,12 +73,6 @@ class GattTestCase(BTPTestCase):
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
     def test_gattc_discover_all_chrcs(self):
-        btp.gatts_add_svc(self.lt, 0, PTS_DB.SVC)
-        btp.gatts_add_char(self.lt, 0, Prop.read | Prop.write,
-                           Perm.read | Perm.write,
-                           PTS_DB.CHR_READ_WRITE)
-        btp.gatts_start_server(self.lt)
-
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_prim_uuid(self.iut,
@@ -120,12 +101,6 @@ class GattTestCase(BTPTestCase):
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
     def test_gattc_discover_chrc_uuid(self):
-        btp.gatts_add_svc(self.lt, 0, PTS_DB.SVC)
-        btp.gatts_add_char(self.lt, 0, Prop.read | Prop.write,
-                           Perm.read | Perm.write,
-                           PTS_DB.CHR_READ_WRITE)
-        btp.gatts_start_server(self.lt)
-
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_chrc_uuid(self.iut,
@@ -144,14 +119,6 @@ class GattTestCase(BTPTestCase):
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
     def test_gattc_discover_all_descs(self):
-        btp.gatts_add_svc(self.lt, 0, PTS_DB.SVC)
-        btp.gatts_add_char(self.lt, 0, Prop.read | Prop.write,
-                           Perm.read | Perm.write,
-                           PTS_DB.CHR_READ_WRITE)
-        btp.gatts_add_desc(self.lt, 0, Perm.read | Perm.write,
-                           PTS_DB.DSC_READ_WRITE)
-        btp.gatts_start_server(self.lt)
-
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_prim_uuid(self.iut,
@@ -194,15 +161,6 @@ class GattTestCase(BTPTestCase):
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
     def test_gattc_read_characteristic(self):
-        btp.gatts_add_svc(self.lt, 0, PTS_DB.SVC)
-        char_id = btp.gatts_add_char(self.lt, 0, Prop.read | Prop.write,
-                                     Perm.read | Perm.write,
-                                     PTS_DB.CHR_READ_WRITE)
-        btp.gatts_start_server(self.lt)
-
-        value = "123456"
-        btp.gatts_set_val(self.lt, char_id, value)
-
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_chrc_uuid(self.iut,
@@ -225,22 +183,10 @@ class GattTestCase(BTPTestCase):
         btp.gattc_read_rsp(self.iut, val)
 
         self.assertEqual(val.att_rsp, "No error")
-        self.assertEqual(val.value, value)
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
     def test_gattc_read_descriptor(self):
-        btp.gatts_add_svc(self.lt, 0, PTS_DB.SVC)
-        btp.gatts_add_char(self.lt, 0, Prop.read | Prop.write,
-                           Perm.read | Perm.write,
-                           PTS_DB.CHR_READ_WRITE)
-        desc_id = btp.gatts_add_desc(self.lt, 0, Perm.read | Perm.write,
-                                     PTS_DB.DSC_READ_WRITE)
-        btp.gatts_start_server(self.lt)
-
-        value = "123456"
-        btp.gatts_set_val(self.lt, desc_id, value)
-
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_prim_uuid(self.iut,
@@ -288,32 +234,22 @@ class GattTestCase(BTPTestCase):
         btp.gattc_read_rsp(self.iut, val)
 
         self.assertEqual(val.att_rsp, "No error")
-        self.assertEqual(val.value, value)
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
     def test_gattc_read_long_characteristic(self):
-        btp.gatts_add_svc(self.lt, 0, PTS_DB.SVC)
-        char_id = btp.gatts_add_char(self.lt, 0, Prop.read | Prop.write,
-                                     Perm.read | Perm.write,
-                                     PTS_DB.CHR_READ_WRITE)
-        btp.gatts_start_server(self.lt)
-
-        value = "FF" * 280
-        btp.gatts_set_val(self.lt, char_id, value)
-
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_chrc_uuid(self.iut,
                                  self.lt.stack.gap.iut_addr_get(),
-                                 0x0001, 0xffff, PTS_DB.CHR_READ_WRITE)
+                                 0x0001, 0xffff, PTS_DB.LONG_CHR_READ_WRITE)
 
         db = GattDB()
         btp.gattc_disc_chrc_uuid_rsp(self.iut, db)
 
         db.print_db()
 
-        chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
+        chr = db.find_chr_by_uuid(PTS_DB.LONG_CHR_READ_WRITE)
         self.assertIsNotNone(chr)
 
         btp.gattc_read_long(self.iut,
@@ -324,22 +260,11 @@ class GattTestCase(BTPTestCase):
         btp.gattc_read_long_rsp(self.iut, val)
 
         self.assertEqual(val.att_rsp, "No error")
-        self.assertEqual(val.value, value)
+        # self.assertEqual(val.value, value)
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
     def test_gattc_read_long_descriptor(self):
-        btp.gatts_add_svc(self.lt, 0, PTS_DB.SVC)
-        btp.gatts_add_char(self.lt, 0, Prop.read | Prop.write,
-                           Perm.read | Perm.write,
-                           PTS_DB.CHR_READ_WRITE)
-        desc_id = btp.gatts_add_desc(self.lt, 0, Perm.read | Perm.write,
-                                     PTS_DB.DSC_READ_WRITE)
-        btp.gatts_start_server(self.lt)
-
-        value = "FF" * 280
-        btp.gatts_set_val(self.lt, desc_id, value)
-
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_prim_uuid(self.iut,
@@ -376,7 +301,7 @@ class GattTestCase(BTPTestCase):
 
         db.print_db()
 
-        dsc = db.find_dsc_by_uuid(PTS_DB.DSC_READ_WRITE)
+        dsc = db.find_dsc_by_uuid(PTS_DB.LONG_DSC_READ_WRITE)
         self.assertIsNotNone(dsc)
 
         btp.gattc_read_long(self.iut,
@@ -387,20 +312,10 @@ class GattTestCase(BTPTestCase):
         btp.gattc_read_long_rsp(self.iut, val)
 
         self.assertEqual(val.att_rsp, "No error")
-        self.assertEqual(val.value, value)
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
     def test_gattc_write_characteristic(self):
-        btp.gatts_add_svc(self.lt, 0, PTS_DB.SVC)
-        char_id = btp.gatts_add_char(self.lt, 0, Prop.read | Prop.write,
-                                     Perm.read | Perm.write,
-                                     PTS_DB.CHR_READ_WRITE)
-        btp.gatts_start_server(self.lt)
-
-        init_value = "123456"
-        btp.gatts_set_val(self.lt, char_id, init_value)
-
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_chrc_uuid(self.iut,
@@ -415,7 +330,7 @@ class GattTestCase(BTPTestCase):
         chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
         self.assertIsNotNone(chr)
 
-        new_value = "FFFFFF"
+        new_value = "FF"
         btp.gattc_write(self.iut,
                         self.lt.stack.gap.iut_addr_get(),
                         chr.value_handle,
@@ -435,17 +350,6 @@ class GattTestCase(BTPTestCase):
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
     def test_gattc_write_descriptor(self):
-        btp.gatts_add_svc(self.lt, 0, PTS_DB.SVC)
-        btp.gatts_add_char(self.lt, 0, Prop.read | Prop.write,
-                           Perm.read | Perm.write,
-                           PTS_DB.CHR_READ_WRITE)
-        desc_id = btp.gatts_add_desc(self.lt, 0, Perm.read | Perm.write,
-                                     PTS_DB.DSC_READ_WRITE)
-        btp.gatts_start_server(self.lt)
-
-        init_value = "123456"
-        btp.gatts_set_val(self.lt, desc_id, init_value)
-
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_prim_uuid(self.iut,
@@ -485,7 +389,7 @@ class GattTestCase(BTPTestCase):
         dsc = db.find_dsc_by_uuid(PTS_DB.DSC_READ_WRITE)
         self.assertIsNotNone(dsc)
 
-        new_value = "FFFFFF"
+        new_value = "FF"
         btp.gattc_write(self.iut,
                         self.lt.stack.gap.iut_addr_get(),
                         dsc.handle,
@@ -505,27 +409,18 @@ class GattTestCase(BTPTestCase):
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
     def test_gattc_write_long_characteristic(self):
-        btp.gatts_add_svc(self.lt, 0, PTS_DB.SVC)
-        char_id = btp.gatts_add_char(self.lt, 0, Prop.read | Prop.write,
-                                     Perm.read | Perm.write,
-                                     PTS_DB.CHR_READ_WRITE)
-        btp.gatts_start_server(self.lt)
-
-        init_value = "00" * 100
-        btp.gatts_set_val(self.lt, char_id, init_value)
-
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_chrc_uuid(self.iut,
                                  self.lt.stack.gap.iut_addr_get(),
-                                 0x0001, 0xffff, PTS_DB.CHR_READ_WRITE)
+                                 0x0001, 0xffff, PTS_DB.LONG_CHR_READ_WRITE)
 
         db = GattDB()
         btp.gattc_disc_chrc_uuid_rsp(self.iut, db)
 
         db.print_db()
 
-        chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
+        chr = db.find_chr_by_uuid(PTS_DB.LONG_CHR_READ_WRITE)
         self.assertIsNotNone(chr)
 
         new_value = "FF" * 100
@@ -548,17 +443,6 @@ class GattTestCase(BTPTestCase):
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
     def test_gattc_write_long_descriptor(self):
-        btp.gatts_add_svc(self.lt, 0, PTS_DB.SVC)
-        btp.gatts_add_char(self.lt, 0, Prop.read | Prop.write,
-                           Perm.read | Perm.write,
-                           PTS_DB.CHR_READ_WRITE)
-        desc_id = btp.gatts_add_desc(self.lt, 0, Perm.read | Perm.write,
-                                     PTS_DB.DSC_READ_WRITE)
-        btp.gatts_start_server(self.lt)
-
-        init_value = "00" * 100
-        btp.gatts_set_val(self.lt, desc_id, init_value)
-
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_prim_uuid(self.iut,
@@ -595,7 +479,7 @@ class GattTestCase(BTPTestCase):
 
         db.print_db()
 
-        dsc = db.find_dsc_by_uuid(PTS_DB.DSC_READ_WRITE)
+        dsc = db.find_dsc_by_uuid(PTS_DB.LONG_DSC_READ_WRITE)
         self.assertIsNotNone(dsc)
 
         new_value = "FF" * 100
@@ -618,25 +502,16 @@ class GattTestCase(BTPTestCase):
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
     def test_gattc_notification(self):
-        btp.gatts_add_svc(self.lt, 0, PTS_DB.SVC)
-        char_id = btp.gatts_add_char(self.lt, 0,
-                                     Prop.read | Prop.write |
-                                     Prop.nofity | Prop.indicate,
-                                     Perm.read | Perm.write,
-                                     PTS_DB.CHR_READ_WRITE)
-        btp.gatts_add_desc(self.lt, 0, Perm.read | Perm.write, UUID.CCC)
-        btp.gatts_start_server(self.lt)
-
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         db = GattDB()
         btp.gattc_disc_chrc_uuid(self.iut,
                                  self.lt.stack.gap.iut_addr_get(),
-                                 0x0001, 0xffff, PTS_DB.CHR_READ_WRITE)
+                                 0x0001, 0xffff, PTS_DB.CHR_NOTIFY)
         btp.gattc_disc_chrc_uuid_rsp(self.iut, db)
         db.print_db()
 
-        chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
+        chr = db.find_chr_by_uuid(PTS_DB.CHR_NOTIFY)
         self.assertIsNotNone(chr)
         end_hdl = db.find_characteristic_end(chr.handle)
         self.assertIsNotNone(end_hdl)
@@ -649,42 +524,33 @@ class GattTestCase(BTPTestCase):
 
         dsc = db.find_dsc_by_uuid(UUID.CCC)
         self.assertIsNotNone(dsc)
+
+        future_iut = btp.gattc_notification_ev(self.iut)
 
         btp.gattc_cfg_notify(self.iut,
                              self.lt.stack.gap.iut_addr_get(),
                              1, dsc.handle)
-        time.sleep(1)
-        future_iut = btp.gattc_notification_ev(self.iut)
-        btp.gatts_set_val(self.lt, char_id, "0001")
-        wait_futures([future_iut], timeout=EV_TIMEOUT)
 
+        wait_futures([future_iut], timeout=EV_TIMEOUT)
         result = future_iut.result()
+
         self.assertTrue(verify_notification_ev(result,
                                                self.lt.stack.gap.iut_addr_get(),
-                                               0x01, chr.value_handle, "0001"))
+                                               0x01, chr.value_handle))
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
     def test_gattc_indication(self):
-        btp.gatts_add_svc(self.lt, 0, PTS_DB.SVC)
-        char_id = btp.gatts_add_char(self.lt, 0,
-                                     Prop.read | Prop.write |
-                                     Prop.nofity | Prop.indicate,
-                                     Perm.read | Perm.write,
-                                     PTS_DB.CHR_READ_WRITE)
-        btp.gatts_add_desc(self.lt, 0, Perm.read | Perm.write, UUID.CCC)
-        btp.gatts_start_server(self.lt)
-
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         db = GattDB()
         btp.gattc_disc_chrc_uuid(self.iut,
                                  self.lt.stack.gap.iut_addr_get(),
-                                 0x0001, 0xffff, PTS_DB.CHR_READ_WRITE)
+                                 0x0001, 0xffff, PTS_DB.CHR_NOTIFY)
         btp.gattc_disc_chrc_uuid_rsp(self.iut, db)
         db.print_db()
 
-        chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
+        chr = db.find_chr_by_uuid(PTS_DB.CHR_NOTIFY)
         self.assertIsNotNone(chr)
         end_hdl = db.find_characteristic_end(chr.handle)
         self.assertIsNotNone(end_hdl)
@@ -698,20 +564,18 @@ class GattTestCase(BTPTestCase):
         dsc = db.find_dsc_by_uuid(UUID.CCC)
         self.assertIsNotNone(dsc)
 
+        future_iut = btp.gattc_notification_ev(self.iut)
+
         btp.gattc_cfg_indicate(self.iut,
                                self.lt.stack.gap.iut_addr_get(),
                                1, dsc.handle)
-        time.sleep(1)
-        btp.gatts_set_val(self.lt, char_id, "0001")
 
-        future_iut = btp.gattc_notification_ev(self.iut)
-        btp.gatts_set_val(self.lt, char_id, "0001")
         wait_futures([future_iut], timeout=EV_TIMEOUT)
-
         result = future_iut.result()
+
         self.assertTrue(verify_notification_ev(result,
                                                self.lt.stack.gap.iut_addr_get(),
-                                               0x02, chr.value_handle, "0001"))
+                                               0x02, chr.value_handle))
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 

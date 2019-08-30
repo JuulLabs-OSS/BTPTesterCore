@@ -47,10 +47,10 @@ def verify_value_changed_ev(args, handle, value):
     return args[0] == handle and args[1] == value
 
 
-def verify_notification_ev(args, addr: BleAddress, type, handle, data):
-    logging.debug("%r %r %r %r %r", args, addr, type, handle, data)
+def verify_notification_ev(args, addr: BleAddress, type, handle):
+    logging.debug("%r %r %r %r", args, addr, type, handle)
     return args[0] == addr and args[1] == type and \
-           args[2] == handle and args[3] == data
+           args[2] == handle
 
 
 def connection_procedure(testcase, central, peripheral):
