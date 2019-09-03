@@ -37,7 +37,12 @@ class GattTestCase(BTPTestCase):
     def tearDown(self):
         super(__class__, self).tearDown()
 
-    def test_gattc_discover_primary_svcs(self):
+    def test_btp_GATT_CL_GAD_1(self):
+        """
+        Verify that a Generic Attribute Profile client discovers Primary
+        Services in a GATT server.
+        """
+
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_prim_svcs(self.iut,
@@ -50,7 +55,12 @@ class GattTestCase(BTPTestCase):
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
-    def test_gattc_discover_primary_uuid(self):
+    def test_btp_GATT_CL_GAD_2(self):
+        """
+        Verify that a Generic Attribute Profile client can discover Primary
+        Services selected by service UUID, using 16-bit and 128-bit UUIDs.
+        """
+
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_prim_uuid(self.iut,
@@ -64,7 +74,12 @@ class GattTestCase(BTPTestCase):
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
-    def test_gattc_find_incl_svcs(self):
+    def test_btp_GATT_CL_GAD_3(self):
+        """
+        Verify that a Generic Attribute Profile client can find include service
+        declarations within a specified service definition on a server.
+        """
+
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_prim_svcs(self.iut,
@@ -88,7 +103,12 @@ class GattTestCase(BTPTestCase):
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
-    def test_gattc_discover_all_chrcs(self):
+    def test_btp_GATT_CL_GAD_4(self):
+        """
+        Verify that a Generic Attribute Profile client can discover
+        characteristic declarations within a specified service definition.
+        """
+
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_prim_uuid(self.iut,
@@ -116,7 +136,13 @@ class GattTestCase(BTPTestCase):
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
-    def test_gattc_discover_chrc_uuid(self):
+    def test_btp_GATT_CL_GAD_5(self):
+        """
+        Verify that a Generic Attribute Profile client can discover
+        characteristics of a specified service, using 16-bit and 128-bit
+        characteristic UUIDs.
+        """
+
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_chrc_uuid(self.iut,
@@ -134,7 +160,12 @@ class GattTestCase(BTPTestCase):
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
-    def test_gattc_discover_all_descs(self):
+    def test_btp_GATT_CL_GAD_6(self):
+        """
+        Verify that a Generic Attribute Profile client can find all Descriptors
+        of a specified Characteristic.
+        """
+
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_prim_uuid(self.iut,
@@ -176,7 +207,12 @@ class GattTestCase(BTPTestCase):
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
-    def test_gattc_read_characteristic(self):
+    def test_btp_GATT_CL_GAR_1(self):
+        """
+        Verify that a Generic Attribute Profile client can read a
+        Characteristic Value selected by handle.
+        """
+
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_chrc_uuid(self.iut,
@@ -202,7 +238,45 @@ class GattTestCase(BTPTestCase):
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
-    def test_gattc_read_descriptor(self):
+    def test_btp_GATT_CL_GAR_2(self):
+        """
+        Verify that a Generic Attribute Profile client can read a Characteristic
+        Value by selected handle. The Characteristic Value length is unknown
+        to the client and might be long.
+        """
+
+        connection_procedure(self, central=self.iut, peripheral=self.lt)
+
+        btp.gattc_disc_chrc_uuid(self.iut,
+                                 self.lt.stack.gap.iut_addr_get(),
+                                 0x0001, 0xffff, PTS_DB.LONG_CHR_READ_WRITE)
+
+        db = GattDB()
+        btp.gattc_disc_chrc_uuid_rsp(self.iut, db)
+
+        db.print_db()
+
+        chr = db.find_chr_by_uuid(PTS_DB.LONG_CHR_READ_WRITE)
+        self.assertIsNotNone(chr)
+
+        btp.gattc_read_long(self.iut,
+                            self.lt.stack.gap.iut_addr_get(),
+                            chr.value_handle, 0)
+
+        val = GattValue()
+        btp.gattc_read_long_rsp(self.iut, val)
+
+        self.assertEqual(val.att_rsp, "No error")
+        # self.assertEqual(val.value, value)
+
+        disconnection_procedure(self, central=self.iut, peripheral=self.lt)
+
+    def test_btp_GATT_CL_GAR_3(self):
+        """
+        Verify that a Generic Attribute Profile client can read a characteristic
+        descriptor selected by handle.
+        """
+
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_prim_uuid(self.iut,
@@ -253,34 +327,13 @@ class GattTestCase(BTPTestCase):
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
-    def test_gattc_read_long_characteristic(self):
-        connection_procedure(self, central=self.iut, peripheral=self.lt)
+    def test_btp_GATT_CL_GAR_4(self):
+        """
+        Verify that a Generic Attribute Profile client can read a characteristic
+        descriptor by selected handle. The Characteristic Descriptor length
+        is unknown to the client and might be long.
+        """
 
-        btp.gattc_disc_chrc_uuid(self.iut,
-                                 self.lt.stack.gap.iut_addr_get(),
-                                 0x0001, 0xffff, PTS_DB.LONG_CHR_READ_WRITE)
-
-        db = GattDB()
-        btp.gattc_disc_chrc_uuid_rsp(self.iut, db)
-
-        db.print_db()
-
-        chr = db.find_chr_by_uuid(PTS_DB.LONG_CHR_READ_WRITE)
-        self.assertIsNotNone(chr)
-
-        btp.gattc_read_long(self.iut,
-                            self.lt.stack.gap.iut_addr_get(),
-                            chr.value_handle, 0)
-
-        val = GattValue()
-        btp.gattc_read_long_rsp(self.iut, val)
-
-        self.assertEqual(val.att_rsp, "No error")
-        # self.assertEqual(val.value, value)
-
-        disconnection_procedure(self, central=self.iut, peripheral=self.lt)
-
-    def test_gattc_read_long_descriptor(self):
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_prim_uuid(self.iut,
@@ -331,7 +384,12 @@ class GattTestCase(BTPTestCase):
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
-    def test_gattc_write_characteristic(self):
+    def test_btp_GATT_CL_GAW_1(self):
+        """
+        Verify that a Generic Attribute Profile client can write
+        a Characteristic Value selected by handle.
+        """
+
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_chrc_uuid(self.iut,
@@ -365,7 +423,51 @@ class GattTestCase(BTPTestCase):
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
-    def test_gattc_write_descriptor(self):
+    def test_btp_GATT_CL_GAW_2(self):
+        """
+        Verify that a Generic Attribute Profile client can write a long
+        Characteristic Value selected by handle.
+        """
+
+        connection_procedure(self, central=self.iut, peripheral=self.lt)
+
+        btp.gattc_disc_chrc_uuid(self.iut,
+                                 self.lt.stack.gap.iut_addr_get(),
+                                 0x0001, 0xffff, PTS_DB.LONG_CHR_READ_WRITE)
+
+        db = GattDB()
+        btp.gattc_disc_chrc_uuid_rsp(self.iut, db)
+
+        db.print_db()
+
+        chr = db.find_chr_by_uuid(PTS_DB.LONG_CHR_READ_WRITE)
+        self.assertIsNotNone(chr)
+
+        new_value = "FF" * 100
+        btp.gattc_write_long(self.iut,
+                             self.lt.stack.gap.iut_addr_get(),
+                             chr.value_handle,
+                             0, new_value)
+
+        future_lt = btp.gatts_attr_value_changed_ev(self.lt)
+
+        val = GattValue()
+        btp.gattc_write_long_rsp(self.iut, val)
+        self.assertEqual(val.att_rsp, "No error")
+
+        wait_futures([future_lt], timeout=EV_TIMEOUT)
+
+        hdl, data = future_lt.result()
+        self.assertEqual(data, new_value)
+
+        disconnection_procedure(self, central=self.iut, peripheral=self.lt)
+
+    def test_btp_GATT_CL_GAW_3(self):
+        """
+        Verify that a Generic Attribute Profile client can write
+        a characteristic descriptor selected by handle.
+        """
+
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_prim_uuid(self.iut,
@@ -424,41 +526,12 @@ class GattTestCase(BTPTestCase):
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
-    def test_gattc_write_long_characteristic(self):
-        connection_procedure(self, central=self.iut, peripheral=self.lt)
+    def test_btp_GATT_CL_GAW_4(self):
+        """
+        Verify that a Generic Attribute Profile client can write a long
+        characteristic descriptor selected by handle.
+        """
 
-        btp.gattc_disc_chrc_uuid(self.iut,
-                                 self.lt.stack.gap.iut_addr_get(),
-                                 0x0001, 0xffff, PTS_DB.LONG_CHR_READ_WRITE)
-
-        db = GattDB()
-        btp.gattc_disc_chrc_uuid_rsp(self.iut, db)
-
-        db.print_db()
-
-        chr = db.find_chr_by_uuid(PTS_DB.LONG_CHR_READ_WRITE)
-        self.assertIsNotNone(chr)
-
-        new_value = "FF" * 100
-        btp.gattc_write_long(self.iut,
-                             self.lt.stack.gap.iut_addr_get(),
-                             chr.value_handle,
-                             0, new_value)
-
-        future_lt = btp.gatts_attr_value_changed_ev(self.lt)
-
-        val = GattValue()
-        btp.gattc_write_long_rsp(self.iut, val)
-        self.assertEqual(val.att_rsp, "No error")
-
-        wait_futures([future_lt], timeout=EV_TIMEOUT)
-
-        hdl, data = future_lt.result()
-        self.assertEqual(data, new_value)
-
-        disconnection_procedure(self, central=self.iut, peripheral=self.lt)
-
-    def test_gattc_write_long_descriptor(self):
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         btp.gattc_disc_prim_uuid(self.iut,
@@ -517,7 +590,12 @@ class GattTestCase(BTPTestCase):
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
-    def test_gattc_notification(self):
+    def test_btp_GATT_CL_GAN_1(self):
+        """
+        Verify that a Generic Attribute Profile client can receive
+        a Characteristic Value Notification and report that to the Upper Tester.
+        """
+
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         db = GattDB()
@@ -556,7 +634,12 @@ class GattTestCase(BTPTestCase):
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
-    def test_gattc_indication(self):
+    def test_btp_GATT_CL_GAI_1(self):
+        """
+        Verify that a Generic Attribute Profile client can receive
+        a Characteristic Value Notification and report that to the Upper Tester.
+        """
+
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         db = GattDB()

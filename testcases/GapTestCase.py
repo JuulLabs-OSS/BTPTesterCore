@@ -37,7 +37,15 @@ class GapTestCase(BTPTestCase):
     def tearDown(self):
         super(__class__, self).tearDown()
 
-    def test_scan(self):
+    def test_btp_GAP_DISC_GENM_1(self):
+        """
+        Verify the IUT in General Discoverable Mode and the Undirected
+        Connectable Mode can be discovered by a device performing the General
+        Discovery Procedure.
+
+        The IUT is operating in the Peripheral role.
+        """
+
         btp.gap_set_conn(self.lt)
         btp.gap_set_gendiscov(self.lt)
 
@@ -55,15 +63,26 @@ class GapTestCase(BTPTestCase):
         found = future.result()
         self.assertIsNotNone(found)
 
-    def test_advertising(self):
-        connection_procedure(self, central=self.lt, peripheral=self.iut)
-        disconnection_procedure(self, central=self.lt, peripheral=self.iut)
+    def test_btp_GAP_CONN_GCEP_1(self):
+        """
+        Verify the IUT can perform the General Connection Establishment
+        Procedure to connect to another device in the Undirected Connectable
+        Mode.
 
-    def test_connection(self):
+        The IUT is operating in the Central role.
+        """
+
         connection_procedure(self, central=self.iut, peripheral=self.lt)
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
-    def test_directed_adv(self):
+    def test_btp_GAP_CONN_DCON_1(self):
+        """
+        Verify the IUT in the Directed Connectable Mode can connect with another
+        device performing the General Connection Establishment Procedure.
+
+        The IUT is operating in the Peripheral role.
+        """
+
         connection_procedure(self, central=self.lt, peripheral=self.iut)
 
         iut_addr = self.iut.stack.gap.iut_addr_get()
@@ -101,41 +120,17 @@ class GapTestCase(BTPTestCase):
 
         disconnection_procedure(self, central=self.lt, peripheral=self.iut)
 
-    def test_connection_parameter_update_master(self):
-        connection_procedure(self, central=self.iut, peripheral=self.lt)
+    def test_btp_GAP_CONN_CPUP_1(self):
+        """
+        Verify the IUT can perform the Connection Parameter Update Procedure
+        using valid parameters for the peer device; the peer device accepts
+        the updated connection parameters.
 
-        conn_params = self.iut.stack.gap.get_conn_params()
-        iut_addr = self.iut.stack.gap.iut_addr_get()
-        lt_addr = self.lt.stack.gap.iut_addr_get()
+        The IUT is operating in the Peripheral role and is the initiator
+        performing the Connection Parameter Update Procedure; the Lower Tester
+        is operating in the Central role and is the responder.
+        """
 
-        conn_itvl_min, conn_itvl_max, latency, supervision_timeout = (
-            conn_params.conn_itvl,
-            conn_params.conn_itvl,
-            conn_params.conn_latency + 2,
-            conn_params.supervision_timeout)
-
-        btp.gap_conn_param_update(self.iut,
-                                  self.lt.stack.gap.iut_addr_get(),
-                                  conn_itvl_min, conn_itvl_max, latency,
-                                  supervision_timeout)
-
-        def verify_iut(args):
-            return verify_conn_params(args, lt_addr, conn_itvl_min,
-                                      conn_itvl_max, latency,
-                                      supervision_timeout)
-
-        def verify_lt(args):
-            return verify_conn_params(args, iut_addr, conn_itvl_min,
-                                      conn_itvl_max, latency,
-                                      supervision_timeout)
-
-        wait_futures([btp.gap_conn_param_update_ev(self.iut, verify_iut),
-                      btp.gap_conn_param_update_ev(self.lt, verify_lt)],
-                     timeout=EV_TIMEOUT)
-
-        disconnection_procedure(self, central=self.iut, peripheral=self.lt)
-
-    def test_connection_parameter_update_slave(self):
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
         conn_params = self.iut.stack.gap.get_conn_params()
@@ -169,7 +164,60 @@ class GapTestCase(BTPTestCase):
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
-    def test_pairing_jw(self):
+    def test_btp_GAP_CONN_CPUP_2(self):
+        """
+        Verify the IUT can perform the Connection Parameter Update Procedure
+        using valid parameters for the peer device; the peer device accepts
+        the updated connection parameters.
+
+        The IUT is operating in the Central role and is the initiator performing
+        the Connection Parameter Update Procedure and the Lower Tester is
+        operating in the Peripheral role and is the responder.
+        """
+
+        connection_procedure(self, central=self.iut, peripheral=self.lt)
+
+        conn_params = self.iut.stack.gap.get_conn_params()
+        iut_addr = self.iut.stack.gap.iut_addr_get()
+        lt_addr = self.lt.stack.gap.iut_addr_get()
+
+        conn_itvl_min, conn_itvl_max, latency, supervision_timeout = (
+            conn_params.conn_itvl,
+            conn_params.conn_itvl,
+            conn_params.conn_latency + 2,
+            conn_params.supervision_timeout)
+
+        btp.gap_conn_param_update(self.iut,
+                                  self.lt.stack.gap.iut_addr_get(),
+                                  conn_itvl_min, conn_itvl_max, latency,
+                                  supervision_timeout)
+
+        def verify_iut(args):
+            return verify_conn_params(args, lt_addr, conn_itvl_min,
+                                      conn_itvl_max, latency,
+                                      supervision_timeout)
+
+        def verify_lt(args):
+            return verify_conn_params(args, iut_addr, conn_itvl_min,
+                                      conn_itvl_max, latency,
+                                      supervision_timeout)
+
+        wait_futures([btp.gap_conn_param_update_ev(self.iut, verify_iut),
+                      btp.gap_conn_param_update_ev(self.lt, verify_lt)],
+                     timeout=EV_TIMEOUT)
+
+        disconnection_procedure(self, central=self.iut, peripheral=self.lt)
+
+    def test_btp_GAP_CONN_PAIR_1(self):
+        """
+        Verify the IUT can perform the unauthenticated pairing procedure
+        (Just Works) as the initiator.
+
+        The IUT is operating in the Central role and is the initiator
+        performing the pairing procedure; the Lower Tester
+        is operating in the Peripheral role and is the responder.
+        """
+
         btp.gap_set_io_cap(self.lt, IOCap.no_input_output)
         connection_procedure(self, central=self.iut, peripheral=self.lt)
 
@@ -197,7 +245,16 @@ class GapTestCase(BTPTestCase):
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
-    def test_pairing_numcmp(self):
+    def test_btp_GAP_CONN_PAIR_2(self):
+        """
+        Verify the IUT can perform the authenticated pairing procedure
+        (Numeric Comparison) as the initiator.
+
+        The IUT is operating in the Central role and is the initiator
+        performing the pairing procedure; the Lower Tester
+        is operating in the Peripheral role and is the responder.
+        """
+
         btp.gap_set_io_cap(self.iut, IOCap.display_yesno)
         btp.gap_set_io_cap(self.lt, IOCap.display_yesno)
 
@@ -245,7 +302,16 @@ class GapTestCase(BTPTestCase):
 
         disconnection_procedure(self, central=self.iut, peripheral=self.lt)
 
-    def test_pairing_input(self):
+    def test_btp_GAP_CONN_PAIR_3(self):
+        """
+        Verify the IUT can perform the authenticated pairing procedure
+        (Keyboard Input) as the initiator.
+
+        The IUT is operating in the Central role and is the initiator
+        performing the pairing procedure; the Lower Tester
+        is operating in the Peripheral role and is the responder.
+        """
+
         btp.gap_set_io_cap(self.iut, IOCap.keyboard_only)
         btp.gap_set_io_cap(self.lt, IOCap.display_only)
 
