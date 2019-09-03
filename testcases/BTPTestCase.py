@@ -18,34 +18,34 @@ import unittest
 
 
 class BTPTestCase(unittest.TestCase):
-    def __init__(self, testname, iut, lt):
+    def __init__(self, testname, iut1, iut2):
         super(__class__, self).__init__(testname)
 
-        if iut is None:
-            raise Exception("IUT is None")
+        if iut1 is None:
+            raise Exception("IUT1 is None")
 
-        if lt is None:
-            raise Exception("LT is None")
+        if iut2 is None:
+            raise Exception("IUT2 is None")
 
-        self.iut = iut
-        self.lt = lt
+        self.iut1 = iut1
+        self.iut2 = iut2
 
     @classmethod
-    def init_testcases(cls, iut, lt):
+    def init_testcases(cls, iut1, iut2):
         testcases = []
         ldr = unittest.TestLoader()
         for testname in ldr.getTestCaseNames(cls):
-            testcases.append(cls(testname, iut, lt))
+            testcases.append(cls(testname, iut1, iut2))
         return testcases
 
     def setUp(self):
-        self.iut.start()
-        self.iut.wait_iut_ready_event()
-        self.lt.start()
-        self.lt.wait_iut_ready_event()
+        self.iut1.start()
+        self.iut1.wait_iut_ready_event()
+        self.iut2.start()
+        self.iut2.wait_iut_ready_event()
 
     def tearDown(self):
-        self.iut.stop()
-        self.lt.stop()
+        self.iut1.stop()
+        self.iut2.stop()
 
 
