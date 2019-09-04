@@ -92,7 +92,8 @@ class MynewtCtl(IutCtl):
         log("%s.%s", self.__class__, self.start.__name__)
 
         self._btp_socket = BTPSocket(self.btp_address)
-        self._btp_worker = BTPWorker(self._btp_socket, 'RxWorkerMynewt')
+        self._btp_worker = BTPWorker(self._btp_socket, 'RxWorkerMynewt-' +
+                                     str(self.id))
         self._btp_worker.open()
         self._btp_worker.register_event_handler(self._event_handler)
 
