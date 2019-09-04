@@ -59,7 +59,8 @@ class AndroidCtl(IutCtl):
         log("%s.%s", self.__class__, self.start.__name__)
 
         self._btp_socket = BTPWebSocket(self.host, self.port)
-        self._btp_worker = BTPWorker(self._btp_socket, 'RxWorkerAndroid')
+        self._btp_worker = BTPWorker(self._btp_socket, 'RxWorkerAndroid-' +
+                                     self.host)
         self._btp_worker.open()
         self._btp_worker.register_event_handler(self._event_handler)
         self._btp_worker.accept()

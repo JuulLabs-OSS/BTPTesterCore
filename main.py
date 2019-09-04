@@ -25,7 +25,7 @@ from testcases.GapTestCase import GapTestCase
 
 def main():
     print("Starting tester")
-    format = ("%(asctime)s %(name)-20s %(levelname)s %(threadName)-20s "
+    format = ("%(asctime)s %(name)-20s %(levelname)s %(threadName)-40s "
               "%(filename)-25s %(lineno)-5s %(funcName)-25s : %(message)s")
     logging.basicConfig(level=logging.DEBUG,
                         format=format)
@@ -39,10 +39,14 @@ def main():
 
     def suite():
         suite = unittest.TestSuite()
-        # suite.addTest(GattTestCase('test_gattc_find_incl_svcs',
-        #                            mynewt1, mynewt2))
+        # suite.addTest(GapTestCase('test_btp_GAP_CONN_CPUP_1',
+        #                            mynewt2, mynewt1))
+
         suite.addTests(GapTestCase.init_testcases(mynewt1, mynewt2))
         suite.addTests(GattTestCase.init_testcases(mynewt1, mynewt2))
+
+        suite.addTests(GapTestCase.init_testcases(mynewt2, mynewt1))
+        suite.addTests(GattTestCase.init_testcases(mynewt2, mynewt1))
         return suite
 
     runner = unittest.TextTestRunner(verbosity=2)
