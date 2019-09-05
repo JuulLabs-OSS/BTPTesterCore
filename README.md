@@ -149,6 +149,11 @@ Descriptor
     Permission: READ | WRITE
 
 
+#### Other requirements
+
+Python 3.7
+nrfjprog in PATH
+
 #### Support for other systems and devices
 
 It is possible to use this tool with other systems and devices. The only
