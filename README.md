@@ -111,6 +111,44 @@ All testcases should be named according to the following format:
 test_btp_<PROFILE>_<GROUP>_<FEATURE>_<NUM>
 ```
 
+#### Required static GATT Database
+
+The IUT should implement the following static GATT database to pass
+the defined GATT testcases:
+
+Service
+    UUID: 0000001E-8C26-476F-89A7-A108033A69C7
+Service
+    UUID: 00000001-8C26-476F-89A7-A108033A69C7
+    Included: 0000001E-8C26-476F-89A7-A108033A69C7
+Characteristic
+    UUID: 00000006-8C26-476F-89A7-A108033A69C7
+    Property: READ | WRITE
+    Permission: READ | WRITE
+    Value: 1 byte length
+Descriptor
+    UUID: 0000000B-8C26-476F-89A7-A108033A69C7
+    Permission: READ | WRITE
+    Value: 1 byte length
+Descriptor
+    UUID: 0000001B-8C26-476F-89A7-A108033A69C7
+    Permission: READ | WRITE
+    Value: 100 byte length
+Characteristic
+    UUID: 00000015-8C26-476F-89A7-A108033A69C7
+    Property: READ | WRITE
+    Permission: READ | WRITE
+    Value: 100 byte length
+Characteristic
+    UUID: 000000k5-8C26-476F-89A7-A108033A69C7
+    Property: NOTIFY | INDICATE
+    Permission: READ
+    Value: 1 byte length
+Descriptor
+    UUID: 2902 (CCCD)
+    Permission: READ | WRITE
+
+
 #### Support for other systems and devices
 
 It is possible to use this tool with other systems and devices. The only
