@@ -29,7 +29,7 @@ BTPTesterCore app running on a computer. Testing with Mynewt relies on
 Nordic nRF5x devices are supported right now. Adding support for other 
 devices and transports should be fairly simple so feel free to submit PRs.
 
-###### Configuration:
+**Configuration:**
 
 To create a connection with a Mynewt device you need:
 
@@ -38,7 +38,7 @@ To create a connection with a Mynewt device you need:
 
 Example: 
 ```
-MynewtCtl('/dev/ttyACM0', '683xxxxxx')
+mynewt = MynewtCtl('/dev/ttyACM0', '683xxxxxx')
 ```
     
 #### Testing with Android
@@ -51,7 +51,7 @@ BTPTesterCore runs a WebSocket client that connects to the Android
 app. When the connection is established, BTP packets can be sent
 in both directions.
     
-###### Configuration:
+**Configuration:**
 
 To create a connection with an Android device you need:
 
@@ -59,7 +59,56 @@ To create a connection with an Android device you need:
 
 Example: 
 ```
-AndroidCtl('192.168.xxx.xxx', 8765)
+android = AndroidCtl('192.168.xxx.xxx', 8765)
+```
+
+#### Preparing a test run
+
+In the current version of this tool preparing a test run is very simple.
+Everything can be configured inside `main.py` file.
+
+Firstly, configure and create objects representing connections to your
+IUTs as described above. Then prepare a test suite. BTPTesterCore
+uses Python's unittest framework to run tests. First create a
+`unittest.TestSuite() object like so:
+
+```
+suite = unittest.TestSuite()
+```
+
+Then you can start adding testcases by specifying a testcase name
+explicitly:
+
+```
+suite.addTest(GapTestCase('test_btp_GAP_CONN_DCON_1', mynewt, android))
+```
+
+or by using a helper function that returns all testcases inside a file:
+
+```
+suite.addTests(GapTestCase.init_testcases(mynewt, android))
+suite.addTests(GattTestCase.init_testcases(mynewt, android))
+```
+
+Please note that when adding testcases we initialize each testcase
+object by passing IUTs as the parameters.
+
+Lastly, create a test runner and run the test suite:
+
+```
+runner = unittest.TextTestRunner(verbosity=2)
+runner.run(suite())
+```
+
+A working example can be found in `main.py` file.
+
+
+#### Testcase naming convention
+
+All testcases should be named according to the following format:
+
+```
+test_btp_<PROFILE>_<GROUP>_<FEATURE>_<NUM>
 ```
 
 #### Support for other systems and devices
@@ -72,7 +121,7 @@ app to Mynewt's bttester - https://github.com/zephyrproject-rtos/zephyr/tree/mas
 There are also plans to add support for testing with iOS and Bluez.
 
 
-#### 
+----
 
 This is a very early version of this tool so there may be issue and missing
 features. Feel free to test it and submit PRs, feature requests or report 
