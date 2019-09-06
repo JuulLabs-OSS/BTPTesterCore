@@ -140,7 +140,7 @@ Characteristic
     Permission: READ | WRITE
     Value: 100 byte length
 Characteristic
-    UUID: 000000k5-8C26-476F-89A7-A108033A69C7
+    UUID: 00000025-8C26-476F-89A7-A108033A69C7
     Property: NOTIFY | INDICATE
     Permission: READ
     Value: 1 byte length
