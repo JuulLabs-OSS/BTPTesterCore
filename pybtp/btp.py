@@ -1094,6 +1094,29 @@ def gap_sec_level_changed_ev_(stack, data, data_len):
     return bleaddr, _level
 
 
+def gap_pairing_consent_ev_(stack, data, data_len):
+    logging.debug("%s", gap_pairing_consent_ev_.__name__)
+
+    gap = stack.gap
+
+    logging.debug("received %r", data)
+
+    fmt = '<B6s'
+    if len(data) != struct.calcsize(fmt):
+        raise BTPError("Invalid data length")
+
+    _addr_t, _addr, = struct.unpack_from(fmt, data)
+    _addr = binascii.hexlify(_addr[::-1]).decode()
+
+    logging.debug("received %r", (_addr_t, _addr))
+
+    bleaddr = BleAddress(_addr, _addr_t)
+
+    gap.pairing_consent(bleaddr)
+
+    return bleaddr
+
+
 GAP_EV = {
     defs.GAP_EV_NEW_SETTINGS: gap_new_settings_ev_,
     defs.GAP_EV_DEVICE_FOUND: gap_device_found_ev_,
@@ -1105,6 +1128,7 @@ GAP_EV = {
     defs.GAP_EV_IDENTITY_RESOLVED: gap_identity_resolved_ev_,
     defs.GAP_EV_CONN_PARAM_UPDATE: gap_conn_param_update_ev_,
     defs.GAP_EV_SEC_LEVEL_CHANGED: gap_sec_level_changed_ev_,
+    defs.GAP_EV_PAIRING_CONSENT: gap_pairing_consent_ev_,
 }
 
 
