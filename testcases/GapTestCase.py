@@ -230,8 +230,8 @@ class GapTestCase(BTPTestCase):
         def verify_iut2(args):
             return verify_address(args, iut_addr)
 
-        future_iut1 = btp.gap_sec_level_changed_ev(self.iut1, verify_iut1)
-        future_iut2 = btp.gap_sec_level_changed_ev(self.iut2, verify_iut2)
+        future_iut1 = btp.gap_sec_level_changed_ev(self.iut1)
+        future_iut2 = btp.gap_sec_level_changed_ev(self.iut2)
 
         btp.gap_pair(self.iut1, self.iut2.stack.gap.iut_addr_get())
 
@@ -262,15 +262,8 @@ class GapTestCase(BTPTestCase):
 
         btp.gap_pair(self.iut1, self.iut2.stack.gap.iut_addr_get())
 
-        iut_addr = self.iut1.stack.gap.iut_addr_get()
-        iut2_addr = self.iut2.stack.gap.iut_addr_get()
-
-        def verify_master(args): return verify_address(args, iut2_addr)
-
-        def verify_slave(args): return verify_address(args, iut_addr)
-
-        future_master = btp.gap_passkey_confirm_req_ev(self.iut1, verify_master)
-        future_slave = btp.gap_passkey_confirm_req_ev(self.iut2, verify_slave)
+        future_master = btp.gap_passkey_confirm_req_ev(self.iut1)
+        future_slave = btp.gap_passkey_confirm_req_ev(self.iut2)
 
         wait_futures([future_master, future_slave], timeout=EV_TIMEOUT)
 
@@ -289,8 +282,8 @@ class GapTestCase(BTPTestCase):
         btp.gap_passkey_confirm(self.iut2,
                                 self.iut1.stack.gap.iut_addr_get(), 1)
 
-        future_master = btp.gap_sec_level_changed_ev(self.iut1, verify_master)
-        future_slave = btp.gap_sec_level_changed_ev(self.iut2, verify_slave)
+        future_master = btp.gap_sec_level_changed_ev(self.iut1)
+        future_slave = btp.gap_sec_level_changed_ev(self.iut2)
 
         wait_futures([future_master, future_slave], timeout=EV_TIMEOUT)
 
@@ -320,15 +313,10 @@ class GapTestCase(BTPTestCase):
         btp.gap_pair(self.iut1,
                      self.iut2.stack.gap.iut_addr_get())
 
-        iut_addr = self.iut1.stack.gap.iut_addr_get()
         iut2_addr = self.iut2.stack.gap.iut_addr_get()
 
-        def verify_master(args): return verify_address(args, iut2_addr)
-
-        def verify_slave(args): return verify_address(args, iut_addr)
-
-        future_slave = btp.gap_passkey_disp_ev(self.iut2, verify_slave)
-        future_master = btp.gap_passkey_entry_req_ev(self.iut1, verify_master)
+        future_slave = btp.gap_passkey_disp_ev(self.iut2)
+        future_master = btp.gap_passkey_entry_req_ev(self.iut1)
 
         wait_futures([future_master, future_slave], timeout=EV_TIMEOUT)
         results_slave = future_slave.result()
@@ -337,8 +325,8 @@ class GapTestCase(BTPTestCase):
 
         btp.gap_passkey_entry_rsp(self.iut1, iut2_addr, pk_iut2)
 
-        future_master = btp.gap_sec_level_changed_ev(self.iut1, verify_master)
-        future_slave = btp.gap_sec_level_changed_ev(self.iut2, verify_slave)
+        future_master = btp.gap_sec_level_changed_ev(self.iut1)
+        future_slave = btp.gap_sec_level_changed_ev(self.iut2)
 
         wait_futures([future_master, future_slave], timeout=EV_TIMEOUT)
 
