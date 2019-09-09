@@ -586,6 +586,8 @@ def gap_passkey_confirm(iutctl: IutCtl, bd_addr: BleAddress, match):
 
     gap_command_rsp_succ(iutctl)
 
+    iutctl.stack.passkey_confirm_cb(bd_addr, match)
+
 
 def gap_set_conn(iutctl: IutCtl):
     logging.debug("%s", gap_set_conn.__name__)
@@ -1112,7 +1114,7 @@ def gap_pairing_consent_ev_(stack, data, data_len):
 
     bleaddr = BleAddress(_addr, _addr_t)
 
-    gap.pairing_consent(bleaddr)
+    stack.pairing_consent_cb(bleaddr)
 
     return bleaddr
 
