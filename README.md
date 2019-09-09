@@ -151,6 +151,7 @@ Descriptor
 
 #### Other requirements
 
+Unix-based OS
 Python 3.7
 nrfjprog in PATH
 
