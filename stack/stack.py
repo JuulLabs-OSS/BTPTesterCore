@@ -12,7 +12,7 @@
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
 # more details.
 #
-from stack.gap import Gap
+from stack.gap import Gap, BleAddress
 from stack.gatt import Gatt
 from stack.l2cap import L2CAP
 from stack.mesh import Mesh
@@ -20,6 +20,8 @@ from stack.mesh import Mesh
 
 class Stack:
     def __init__(self):
+        self._pairing_consent_cb = None
+        self._passkey_confirm_cb = None
         self.gap = None
         self.gatt = None
         self.mesh = None
@@ -38,6 +40,20 @@ class Stack:
                   input_actions, crpl_size):
         self.mesh = Mesh(uuid, oob, output_size, output_actions, input_size,
                          input_actions, crpl_size)
+
+    def set_pairing_consent_cb(self, cb):
+        self._pairing_consent_cb = cb
+
+    def pairing_consent_cb(self, addr: BleAddress):
+        if self._pairing_consent_cb:
+            self._pairing_consent_cb(addr)
+
+    def set_passkey_confirm_cb(self, cb):
+        self._passkey_confirm_cb = cb
+
+    def passkey_confirm_cb(self, addr: BleAddress, match):
+        if self._passkey_confirm_cb:
+            self._passkey_confirm_cb(addr, match)
 
     def cleanup(self):
         if self.gap:

@@ -15,6 +15,7 @@
 #
 
 import logging
+import subprocess
 
 from common.iutctl import IutCtl
 from pybtp import defs
@@ -22,9 +23,27 @@ from pybtp.btp import BTPEventHandler
 from pybtp.btp_websocket import BTPWebSocket
 from pybtp.btp_worker import BTPWorker
 from pybtp.types import BTPError
+from stack.gap import BleAddress
 from stack.stack import Stack
 
 log = logging.debug
+
+
+def _adb_tap_ok():
+    # TODO: Handle different button text than "OK" or find a better way to
+    #  automate pairing confirmation
+    cmd1 = "adb pull $(adb shell uiautomator dump | grep -oP '[^ ]+.xml') /tmp/view.xml"
+    cmd2 = "adb shell input tap $(perl -ne 'printf \"%d %d\n\", ($1+$3)/2, ($2+$4)/2 if /text=\"OK\"[^>]*bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]\"/' /tmp/view.xml)"
+    subprocess.check_call(cmd1, shell=True)
+    subprocess.check_call(cmd2, shell=True)
+
+
+def _pairing_consent(addr: BleAddress):
+    _adb_tap_ok()
+
+
+def _passkey_confirm(addr: BleAddress, match):
+    _adb_tap_ok()
 
 
 class AndroidCtl(IutCtl):
@@ -41,6 +60,8 @@ class AndroidCtl(IutCtl):
         # self.log_file = open(self.log_filename, "w")
 
         self._stack = Stack()
+        self._stack.set_pairing_consent_cb(_pairing_consent)
+        self._stack.set_passkey_confirm_cb(_passkey_confirm)
         self._event_handler = BTPEventHandler(self)
 
     @property
@@ -90,4 +111,3 @@ class AndroidCtl(IutCtl):
             self._btp_worker.close()
             self._btp_worker = None
             self._btp_socket = None
-

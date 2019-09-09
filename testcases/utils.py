@@ -101,6 +101,9 @@ def connection_procedure(testcase, central, peripheral):
     testcase.assertTrue(central.stack.gap.is_connected())
     testcase.assertTrue(peripheral.stack.gap.is_connected())
 
+    central_addr, _ = future_peripheral.result()
+    central.stack.gap.iut_addr_set(central_addr)
+
 
 def disconnection_procedure(testcase, central, peripheral):
     periph_addr = peripheral.stack.gap.iut_addr_get()
