@@ -19,6 +19,15 @@ Bluetooth Low Energy features.
 `testcases/` directory contains files with the implementations of these
 testcases.
 
+#### Requirements
+
+- Unix-based OS
+- nrfjprog
+- socat
+- adb (when testing with Android)
+- Python 3.7
+    - websockets
+
 #### Testing with Mynewt Nimble
 
 To test with Mynewt Nimble the Device Under Test should run 
@@ -116,6 +125,7 @@ test_btp_<PROFILE>_<GROUP>_<FEATURE>_<NUM>
 The IUT should implement the following static GATT database to pass
 the defined GATT testcases:
 
+```
 Service
     UUID: 0000001E-8C26-476F-89A7-A108033A69C7
 Service
@@ -147,13 +157,7 @@ Characteristic
 Descriptor
     UUID: 2902 (CCCD)
     Permission: READ | WRITE
-
-
-#### Other requirements
-
-Unix-based OS
-Python 3.7
-nrfjprog in PATH
+```
 
 #### Support for other systems and devices
 
@@ -167,7 +171,7 @@ There are also plans to add support for testing with iOS and Bluez.
 
 ----
 
-This is a very early version of this tool so there may be issue and missing
+This is a very early version of this tool so there may be issues and missing
 features. Feel free to test it and submit PRs, feature requests or report 
 problems you find.
 
