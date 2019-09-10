@@ -102,6 +102,9 @@ GAP = {
     "conn_param_update": (defs.BTP_SERVICE_ID_GAP,
                           defs.GAP_CONN_PARAM_UPDATE,
                           CONTROLLER_INDEX),
+    "pairing_consent_rsp": (defs.BTP_SERVICE_ID_GAP,
+                            defs.GAP_PAIRING_CONSENT_RSP,
+                            CONTROLLER_INDEX),
     "reset": (defs.BTP_SERVICE_ID_GAP, defs.GAP_RESET, CONTROLLER_INDEX, "")
 }
 
@@ -1130,7 +1133,7 @@ GAP_EV = {
     defs.GAP_EV_IDENTITY_RESOLVED: gap_identity_resolved_ev_,
     defs.GAP_EV_CONN_PARAM_UPDATE: gap_conn_param_update_ev_,
     defs.GAP_EV_SEC_LEVEL_CHANGED: gap_sec_level_changed_ev_,
-    defs.GAP_EV_PAIRING_CONSENT: gap_pairing_consent_ev_,
+    defs.GAP_EV_PAIRING_CONSENT_REQ: gap_pairing_consent_ev_,
 }
 
 
