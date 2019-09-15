@@ -45,7 +45,7 @@ class BTPWorker:
                 data = self.btp_socket.read(timeout=1.0)
 
                 hdr = data[0]
-                if hdr.op >= 0x80:
+                if hdr.svc_id != defs.BTP_SERVICE_ID_CORE and hdr.op >= 0x80:
                     # Do not put handled events on RX queue
                     if self.event_handler_cb:
                         ret = self.event_handler_cb(*data)
