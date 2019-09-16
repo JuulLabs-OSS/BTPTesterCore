@@ -23,36 +23,86 @@ from pybtp.btp import BTPEventHandler
 from pybtp.btp_websocket import BTPWebSocket
 from pybtp.btp_worker import BTPWorker
 from pybtp.types import BTPError
-from stack.gap import BleAddress
 from stack.stack import Stack
 
 log = logging.debug
 
 
-def _adb_tap_ok():
+def _adb_prefix(sn):
+    return "adb {}".format('-s {} '.format(sn) if sn else '')
+
+
+def _find_button_coords(text, view_file):
+    cmd = "perl -ne 'printf \"%d %d\n\", ($1+$3)/2, " \
+          "($2+$4)/2 if /text=\"{}\"[^>]*" \
+          "bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]\"/' {}".format(
+        text, view_file)
+    coords = subprocess.check_output(cmd, shell=True).decode().strip()
+    return coords
+
+
+def _adb_tap_ok(sn):
     # TODO: Handle different button text than "OK" or find a better way to
     #  automate pairing confirmation
-    cmd1 = "adb pull $(adb shell uiautomator dump | grep -oP '[^ ]+.xml') /tmp/view.xml"
-    cmd2 = "adb shell input tap $(perl -ne 'printf \"%d %d\n\", ($1+$3)/2, ($2+$4)/2 if /text=\"OK\"[^>]*bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]\"/' /tmp/view.xml)"
-    subprocess.check_call(cmd1, shell=True)
-    subprocess.check_call(cmd2, shell=True)
+    cmd1 = "shell uiautomator dump | grep -oP '[^ ]+.xml'"
+    file = subprocess.check_output(_adb_prefix(sn) + cmd1,
+                                   shell=True).decode().strip()
+    view_file = '/tmp/view-{}.xml'.format(sn)
+
+    cmd2 = "pull {} {}".format(file, view_file)
+    subprocess.check_call(_adb_prefix(sn) + cmd2, shell=True)
+
+    # TODO: Find a better way to parse the view file so we dont have to
+    #  do it twice
+    coords = _find_button_coords('OK', view_file)
+    if not coords:
+        coords = _find_button_coords('PAIR', view_file)
+
+    cmd4 = "shell input tap {}".format(coords)
+    subprocess.check_call(_adb_prefix(sn) + cmd4, shell=True)
 
 
-def _pairing_consent(addr: BleAddress):
-    _adb_tap_ok()
+def _adb_stop_app(sn):
+    cmd = "am force-stop com.juul.btptesterandroid"
+    subprocess.check_call(_adb_prefix(sn) + cmd, shell=True)
 
 
-def _passkey_confirm(addr: BleAddress, match):
-    _adb_tap_ok()
+def _adb_start_app(sn):
+    cmd = "am start -n com.juul.btptesterandroid/com.juul.btptesterandroid" \
+          ".MainActivity "
+    subprocess.check_call(_adb_prefix(sn) + cmd, shell=True)
+
+
+def _adb_open_bluetooth_settings(sn):
+    cmd = "shell am start -S com.android.settings/com.android.settings" \
+          ".bluetooth.BluetoothSettings "
+    subprocess.check_call(_adb_prefix(sn) + cmd, shell=True)
+
+
+def _adb_get_ip(sn):
+    cmd = "shell ip addr show wlan0 | grep \"inet\\s\" | awk '{print $2}' | " \
+          "awk -F'/' '{print $1}' "
+    return subprocess.check_output(_adb_prefix(sn) + cmd,
+                                   shell=True).decode().strip()
 
 
 class AndroidCtl(IutCtl):
-    def __init__(self, host, port):
-        log("%s.%s host=%s port=%s",
-            self.__class__, self.__init__.__name__, host, port)
+    def __init__(self, serial_num, host=None, port=None):
+        log("%s.%s serial_num=%s host=%s port=%s",
+            self.__class__, self.__init__.__name__, serial_num, host, port)
 
-        self.host = host
-        self.port = port
+        self.serial_num = serial_num
+
+        if host:
+            self.host = host
+        else:
+            self.host = _adb_get_ip(self.serial_num)
+
+        if port:
+            self.port = port
+        else:
+            self.port = self.PORT_DEFAULT
+
         self._btp_socket = None
         self._btp_worker = None
 
@@ -60,9 +110,15 @@ class AndroidCtl(IutCtl):
         # self.log_file = open(self.log_filename, "w")
 
         self._stack = Stack()
-        self._stack.set_pairing_consent_cb(_pairing_consent)
-        self._stack.set_passkey_confirm_cb(_passkey_confirm)
+        self._stack.set_pairing_consent_cb(lambda addr:
+                                           _adb_tap_ok(self.serial_num))
+        self._stack.set_passkey_confirm_cb(lambda addr, match:
+                                           _adb_tap_ok(self.serial_num))
         self._event_handler = BTPEventHandler(self)
+
+    @property
+    def PORT_DEFAULT(self):
+        return 8765
 
     @property
     def btp_worker(self):
@@ -81,12 +137,15 @@ class AndroidCtl(IutCtl):
 
         self._btp_socket = BTPWebSocket(self.host, self.port)
         self._btp_worker = BTPWorker(self._btp_socket, 'RxWorkerAndroid-' +
-                                     self.host)
+                                     self.serial_num)
         self._btp_worker.open()
         self._btp_worker.register_event_handler(self._event_handler)
         self._btp_worker.accept()
 
     def reset(self):
+        # _adb_stop_app()
+        # _adb_start_app()
+        _adb_open_bluetooth_settings(self.serial_num)
         pass
 
     def wait_iut_ready_event(self):
