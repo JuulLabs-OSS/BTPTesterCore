@@ -59,16 +59,20 @@ communicate with the Core app. The Android app runs a WebSocket server
 BTPTesterCore runs a WebSocket client that connects to the Android 
 app. When the connection is established, BTP packets can be sent
 in both directions.
+
+The tool supports using multiple Android devices by specifying their
+serial number. That means you can test two Android phones against
+each other.
     
 **Configuration:**
 
 To create a connection with an Android device you need:
 
-- an IP address and port (by default the BTPTesterAndroid app uses 8765)
+- a device serial number (you can find it with `adb devices -l`)
 
 Example: 
 ```
-android = AndroidCtl('192.168.xxx.xxx', 8765)
+android = AndroidCtl('xxxxxxxxx')
 ```
 
 #### Preparing a test run

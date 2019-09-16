@@ -35,18 +35,19 @@ def main():
 
     mynewt1 = MynewtCtl('/dev/ttyACM0', '683802616')
     mynewt2 = MynewtCtl('/dev/ttyACM1', '683414473')
-    # android = AndroidCtl('192.168.9.123', 8765)
+    android1 = AndroidCtl('ce0918294be8353804')
+    android2 = AndroidCtl('CB512BSWU7')
 
     def suite():
         suite = unittest.TestSuite()
-        # suite.addTest(GapTestCase('test_btp_GAP_CONN_CPUP_1',
-        #                            mynewt2, mynewt1))
+        suite.addTest(GapTestCase('test_btp_GAP_CONN_PAIR_2',
+                                  android1, android2))
 
-        suite.addTests(GapTestCase.init_testcases(mynewt1, mynewt2))
-        suite.addTests(GattTestCase.init_testcases(mynewt1, mynewt2))
+        # suite.addTests(GapTestCase.init_testcases(mynewt1, mynewt2))
+        # suite.addTests(GattTestCase.init_testcases(android1, android2))
 
-        suite.addTests(GapTestCase.init_testcases(mynewt2, mynewt1))
-        suite.addTests(GattTestCase.init_testcases(mynewt2, mynewt1))
+        # suite.addTests(GapTestCase.init_testcases(mynewt2, mynewt1))
+        # suite.addTests(GattTestCase.init_testcases(android, mynewt1))
         return suite
 
     runner = unittest.TextTestRunner(verbosity=2)
