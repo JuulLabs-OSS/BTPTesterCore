@@ -1848,7 +1848,7 @@ def gattc_write_without_rsp(iutctl: IutCtl, bd_addr: BleAddress, hdl, val,
     if val_mtp:
         val *= int(val_mtp)
 
-    data_ba = bytearray()
+    data_ba = bytearray(bd_addr)
 
     hdl_ba = struct.pack('H', hdl)
     val_ba = binascii.unhexlify(bytearray(val))
