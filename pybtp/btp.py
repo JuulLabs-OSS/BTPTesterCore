@@ -242,7 +242,10 @@ def btp_hdr_check(rcv_hdr, exp_svc_id, exp_op=None, ignore_status=False):
         raise BTPError("Incorrect service ID %s in the response, expected %s!"
                        % (rcv_hdr.svc_id, exp_svc_id))
 
-    if not ignore_status and rcv_hdr.op == defs.BTP_STATUS:
+    if ignore_status:
+        return
+
+    if rcv_hdr.op == defs.BTP_STATUS:
         raise BTPError("Error opcode in response!")
 
     if exp_op and exp_op != rcv_hdr.op:
