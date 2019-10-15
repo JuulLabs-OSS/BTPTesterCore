@@ -1542,8 +1542,6 @@ def gattc_exchange_mtu(iutctl: IutCtl, bd_addr: BleAddress):
 
     iutctl.btp_worker.send(*GATTC['exchange_mtu'], data=data_ba)
 
-    gatt_command_rsp_succ(iutctl)
-
 
 def gattc_disc_prim_svcs(iutctl: IutCtl, bd_addr: BleAddress):
     logging.debug("%s %r", gattc_disc_prim_svcs.__name__, bd_addr)
