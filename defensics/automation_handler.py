@@ -29,11 +29,20 @@ def test_case_setup(iut):
     preconditions(iut)
 
 
+def test_case_check_health(iut):
+    btp.gap_read_ctrl_info(iut)
+
+
 def test_ATT_Client_Exchange_MTU(iut):
     test_case_setup(iut)
     btp.gap_conn(iut, TESTER_ADDR)
     btp.gap_wait_for_connection(iut)
     btp.gattc_exchange_mtu(iut, TESTER_ADDR)
+    tuple_hdr, tuple_data = iut.btp_worker.read()
+    btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
+                      defs.GATT_EXCHANGE_MTU, ignore_status=True)
+
+    test_case_check_health(iut)
 
 
 def test_ATT_Client_Discover_Primary_Services(iut):
@@ -46,18 +55,20 @@ def test_ATT_Client_Discover_Primary_Services(iut):
     btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
                       defs.GATT_DISC_PRIM_SVCS, ignore_status=True)
 
+    test_case_check_health(iut)
+
 
 def test_ATT_Client_Discover_Service_by_uuid(iut):
     test_case_setup(iut)
     btp.gap_conn(iut, TESTER_ADDR)
     btp.gap_wait_for_connection(iut)
 
-    db = GattDB()
-
     btp.gattc_disc_prim_uuid(iut, TESTER_ADDR, TESTER_SERVICE_UUID)
-    btp.gattc_disc_prim_uuid_rsp(iut, db)
+    tuple_hdr, tuple_data = iut.btp_worker.read()
+    btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
+                      defs.GATT_DISC_PRIM_UUID, ignore_status=True)
 
-    db.print_db()
+    test_case_check_health(iut)
 
 
 def test_ATT_Client_Discover_All_Characteristics(iut):
@@ -65,12 +76,12 @@ def test_ATT_Client_Discover_All_Characteristics(iut):
     btp.gap_conn(iut, TESTER_ADDR)
     btp.gap_wait_for_connection(iut)
 
-    db = GattDB()
-
     btp.gattc_disc_all_chrc(iut, TESTER_ADDR, start_hdl=1, stop_hdl=0xffff)
-    btp.gattc_disc_all_chrc_rsp(iut, db)
+    tuple_hdr, tuple_data = iut.btp_worker.read()
+    btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
+                      defs.GATT_DISC_ALL_CHRC, ignore_status=True)
 
-    db.print_db()
+    test_case_check_health(iut)
 
 
 def test_ATT_Client_Discover_Characteristic_Descriptors(iut):
@@ -100,10 +111,11 @@ def test_ATT_Client_Discover_Characteristic_Descriptors(iut):
             end_hdl = start_hdl
 
         btp.gattc_disc_all_desc(iut, TESTER_ADDR, start_hdl, end_hdl)
-        try:
-            btp.gattc_disc_all_desc_rsp(iut, db)
-        except BTPError:
-            pass
+        tuple_hdr, tuple_data = iut.btp_worker.read()
+        btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
+                          defs.GATT_DISC_ALL_DESC, ignore_status=True)
+
+    test_case_check_health(iut)
 
 
 def test_ATT_Client_Read_Attribute_Value(iut):
@@ -111,12 +123,12 @@ def test_ATT_Client_Read_Attribute_Value(iut):
     btp.gap_conn(iut, TESTER_ADDR)
     btp.gap_wait_for_connection(iut)
 
-    val = GattValue()
     btp.gattc_read(iut, TESTER_ADDR, TESTER_READ_HDL)
-    try:
-        btp.gattc_read_rsp(iut, val)
-    except BTPError:
-        pass
+    tuple_hdr, tuple_data = iut.btp_worker.read()
+    btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
+                      defs.GATT_READ, ignore_status=True)
+
+    test_case_check_health(iut)
 
 
 def test_ATT_Client_Read_Long_Attribute_Value(iut):
@@ -124,12 +136,12 @@ def test_ATT_Client_Read_Long_Attribute_Value(iut):
     btp.gap_conn(iut, TESTER_ADDR)
     btp.gap_wait_for_connection(iut)
 
-    val = GattValue()
     btp.gattc_read_long(iut, TESTER_ADDR, TESTER_READ_HDL, 0)
-    try:
-        btp.gattc_read_long_rsp(iut, val)
-    except BTPError:
-        pass
+    tuple_hdr, tuple_data = iut.btp_worker.read()
+    btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
+                      defs.GATT_READ_LONG, ignore_status=True)
+
+    test_case_check_health(iut)
 
 
 def test_ATT_Client_Write_Attribute_Value(iut):
@@ -137,12 +149,12 @@ def test_ATT_Client_Write_Attribute_Value(iut):
     btp.gap_conn(iut, TESTER_ADDR)
     btp.gap_wait_for_connection(iut)
 
-    val = GattValue()
     btp.gattc_write(iut, TESTER_ADDR, TESTER_WRITE_HDL, '00')
-    try:
-        btp.gattc_write_rsp(iut, val)
-    except BTPError:
-        pass
+    tuple_hdr, tuple_data = iut.btp_worker.read()
+    btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
+                      defs.GATT_WRITE, ignore_status=True)
+
+    test_case_check_health(iut)
 
 
 before_case_handlers = {
@@ -202,11 +214,10 @@ class AutomationHandler(threading.Thread):
                 raise Exception("Unsupported test group: ", test_group)
 
             self.processing_lock.acquire()
-
             # Execute test handler
             hdl(self.iut)
-
             self.processing_lock.release()
+            return
 
     def run(self):
         loop = asyncio.new_event_loop()
