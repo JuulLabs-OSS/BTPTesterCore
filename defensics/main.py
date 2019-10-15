@@ -7,11 +7,11 @@ from defensics.automation_handler import AutomationHandler
 from defensics.instrumentation_server import MakeInstrumentationServer
 from projects.mynewt.iutctl import MynewtCtl
 
-HOST_NAME = '192.168.9.117'
+HOST_NAME = 'localhost'
 PORT_NUMBER = 8000
 
 if __name__ == '__main__':
-    print("Starting tester")
+    print("Starting instrumentation server")
     format = ("%(asctime)s %(name)-20s %(levelname)s %(threadName)-40s "
               "%(filename)-25s %(lineno)-5s %(funcName)-25s : %(message)s")
     logging.basicConfig(level=logging.DEBUG,
@@ -19,6 +19,7 @@ if __name__ == '__main__':
 
     iut = MynewtCtl('/dev/ttyACM0', '683414473')
     automation_hdl = AutomationHandler(iut)
+    automation_hdl.start()
 
     httpd = HTTPServer((HOST_NAME, PORT_NUMBER),
                        MakeInstrumentationServer(automation_hdl))
@@ -29,3 +30,5 @@ if __name__ == '__main__':
         pass
     httpd.server_close()
     print(time.asctime(), 'Server Stops - %s:%s' % (HOST_NAME, PORT_NUMBER))
+
+    automation_hdl.stop()
