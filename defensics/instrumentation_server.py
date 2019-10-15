@@ -1,17 +1,10 @@
 import json
 import logging
-import os
-import pprint
-import time
-
 from http.server import BaseHTTPRequestHandler
 
 from response_handler import ResponseHandler
-from automation_handler import AutomationHandler
 
-from projects.mynewt.iutctl import MynewtCtl
-
-routes = {}
+log = logging.debug
 
 
 def MakeInstrumentationServer(automation_hdl):
@@ -23,15 +16,15 @@ def MakeInstrumentationServer(automation_hdl):
         def do_POST(self):
             content_length = int(
                 self.headers['Content-Length'])  # <--- Gets the size of data
-            post_data = self.rfile.read(content_length)  # <--- Gets the data itself
-            print("POST request,\nPath: {}\nHeaders:\n{}\n\nBody:\n".format(
-                str(self.path), str(self.headers)))
-            params = json.loads(post_data.decode('utf-8'))
-            pprint.pprint(params)
+            post_data = self.rfile.read(content_length).decode('utf-8')  # <--- Gets the data itself
+            log("POST request: Path: {}; Body:{}".format(str(self.path), post_data))
 
-            # time.sleep(2)
+            params = json.loads(post_data)
+            self.automation_hdl.post(self.path, params)
+
             rsp_hdl = ResponseHandler()
-            self.automation_hdl.process(self.path, params, rsp_hdl)
+            rsp_hdl.contents = self.automation_hdl.get_status().to_json()
+            log("Response contents: {}".format(rsp_hdl.contents))
 
             self.respond({'handler': rsp_hdl})
 
