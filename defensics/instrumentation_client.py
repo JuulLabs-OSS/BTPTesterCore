@@ -22,7 +22,7 @@ def send_http_get_json(uri):
     req = urllib.request.Request(uri, data, {'Content-Type': 'application/json'})
     response = urllib.request.urlopen(req)
     result = response.read()
-    return collections.defaultdict(lambda: None, json.loads(result))
+    return collections.defaultdict(lambda: None, json.loads(result.decode()))
 
 
 def usage():
