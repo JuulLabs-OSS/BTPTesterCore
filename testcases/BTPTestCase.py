@@ -39,9 +39,7 @@ class BTPTestCase(unittest.TestCase):
         return testcases
 
     def setUp(self):
-        self.iut1.start()
         self.iut1.wait_iut_ready_event()
-        self.iut2.start()
         self.iut2.wait_iut_ready_event()
 
     def tearDown(self):
