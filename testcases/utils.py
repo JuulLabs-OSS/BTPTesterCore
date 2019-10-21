@@ -34,6 +34,12 @@ def preconditions(iutctl):
     btp.gap_read_ctrl_info(iutctl)
 
 
+def find_adv_by_addr(args, addr: BleAddress):
+    le_adv = args
+    logging.debug("matching %r %r", le_adv.addr, addr)
+    return le_adv.addr == addr
+
+
 def find_adv_by_uuid(args, uuid):
     le_adv = args
     logging.debug("matching %r", le_adv)
