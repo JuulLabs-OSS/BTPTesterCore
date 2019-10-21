@@ -12,7 +12,8 @@ from stack.gap import BleAddress
 from stack.gatt import GattDB, GattValue
 from testcases.utils import preconditions, EV_TIMEOUT, find_adv_by_addr
 
-TESTER_ADDR = BleAddress('001bdcf21c48', 0)
+TESTER_ADDR = BleAddress('001bdc069e49', 0)
+# TESTER_ADDR = BleAddress('001bdcf21c48', 0)
 TESTER_READ_HDL = '0x0003'
 TESTER_WRITE_HDL = '0x0005'
 TESTER_SERVICE_UUID = '180F'
@@ -49,7 +50,7 @@ def test_ATT_Client_Exchange_MTU(iut, valid):
     btp.gattc_exchange_mtu(iut, TESTER_ADDR)
     tuple_hdr, tuple_data = iut.btp_worker.read()
     btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
-                      defs.GATT_EXCHANGE_MTU, ignore_status=True)
+                      defs.GATT_EXCHANGE_MTU, ignore_status=(not valid))
 
     test_case_check_health(iut)
 
@@ -62,7 +63,7 @@ def test_ATT_Client_Discover_Primary_Services(iut, valid):
     btp.gattc_disc_prim_svcs(iut, TESTER_ADDR)
     tuple_hdr, tuple_data = iut.btp_worker.read()
     btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
-                      defs.GATT_DISC_PRIM_SVCS, ignore_status=True)
+                      defs.GATT_DISC_PRIM_SVCS, ignore_status=(not valid))
 
     test_case_check_health(iut)
 
@@ -75,7 +76,7 @@ def test_ATT_Client_Discover_Service_by_uuid(iut, valid):
     btp.gattc_disc_prim_uuid(iut, TESTER_ADDR, TESTER_SERVICE_UUID)
     tuple_hdr, tuple_data = iut.btp_worker.read()
     btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
-                      defs.GATT_DISC_PRIM_UUID, ignore_status=True)
+                      defs.GATT_DISC_PRIM_UUID, ignore_status=(not valid))
 
     test_case_check_health(iut)
 
@@ -88,7 +89,7 @@ def test_ATT_Client_Discover_All_Characteristics(iut, valid):
     btp.gattc_disc_all_chrc(iut, TESTER_ADDR, start_hdl=1, stop_hdl=0xffff)
     tuple_hdr, tuple_data = iut.btp_worker.read()
     btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
-                      defs.GATT_DISC_ALL_CHRC, ignore_status=True)
+                      defs.GATT_DISC_ALL_CHRC, ignore_status=(not valid))
 
     test_case_check_health(iut)
 
@@ -122,7 +123,7 @@ def test_ATT_Client_Discover_Characteristic_Descriptors(iut, valid):
         btp.gattc_disc_all_desc(iut, TESTER_ADDR, start_hdl, end_hdl)
         tuple_hdr, tuple_data = iut.btp_worker.read()
         btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
-                          defs.GATT_DISC_ALL_DESC, ignore_status=True)
+                          defs.GATT_DISC_ALL_DESC, ignore_status=(not valid))
 
     test_case_check_health(iut)
 
@@ -135,7 +136,7 @@ def test_ATT_Client_Read_Attribute_Value(iut, valid):
     btp.gattc_read(iut, TESTER_ADDR, TESTER_READ_HDL)
     tuple_hdr, tuple_data = iut.btp_worker.read()
     btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
-                      defs.GATT_READ, ignore_status=True)
+                      defs.GATT_READ, ignore_status=(not valid))
 
     test_case_check_health(iut)
 
@@ -148,7 +149,7 @@ def test_ATT_Client_Read_Long_Attribute_Value(iut, valid):
     btp.gattc_read_long(iut, TESTER_ADDR, TESTER_READ_HDL, 0)
     tuple_hdr, tuple_data = iut.btp_worker.read()
     btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
-                      defs.GATT_READ_LONG, ignore_status=True)
+                      defs.GATT_READ_LONG, ignore_status=(not valid))
 
     test_case_check_health(iut)
 
@@ -161,7 +162,7 @@ def test_ATT_Client_Write_Attribute_Value(iut, valid):
     btp.gattc_write(iut, TESTER_ADDR, TESTER_WRITE_HDL, '00')
     tuple_hdr, tuple_data = iut.btp_worker.read()
     btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
-                      defs.GATT_WRITE, ignore_status=True)
+                      defs.GATT_WRITE, ignore_status=(not valid))
 
     test_case_check_health(iut)
 
@@ -184,12 +185,13 @@ def test_SMP_Server_SC_Numeric_Comparison(iut, valid):
     future = btp.gap_passkey_confirm_req_ev(iut)
     try:
         wait_futures([future], timeout=EV_TIMEOUT)
-    except TimeoutError:
-        return
-    results = future.result()
-    pk_iut = results[1]
-    assert (pk_iut is not None)
-    btp.gap_passkey_confirm(iut, TESTER_ADDR, 1)
+        results = future.result()
+        pk_iut = results[1]
+        assert (pk_iut is not None)
+        btp.gap_passkey_confirm(iut, TESTER_ADDR, 1)
+    except TimeoutError as e:
+        if valid:
+            raise e
 
 
 def test_SMP_Server_SC_Passkey_Entry(iut, valid):
@@ -202,9 +204,10 @@ def test_SMP_Server_SC_Passkey_Entry(iut, valid):
     future = btp.gap_passkey_entry_req_ev(iut)
     try:
         wait_futures([future], timeout=EV_TIMEOUT)
-    except TimeoutError:
-        return
-    btp.gap_passkey_entry_rsp(iut, TESTER_ADDR, TESTER_PASSKEY)
+        btp.gap_passkey_entry_rsp(iut, TESTER_ADDR, TESTER_PASSKEY)
+    except TimeoutError as e:
+        if valid:
+            raise e
 
 
 def test_SMP_Client_SC_Just_Works(iut, valid):
@@ -223,12 +226,13 @@ def test_SMP_Client_SC_Numeric_Comparison(iut, valid):
     future = btp.gap_passkey_confirm_req_ev(iut)
     try:
         wait_futures([future], timeout=EV_TIMEOUT)
-    except TimeoutError:
-        return
-    results = future.result()
-    pk_iut = results[1]
-    assert (pk_iut is not None)
-    btp.gap_passkey_confirm(iut, TESTER_ADDR, 1)
+        results = future.result()
+        pk_iut = results[1]
+        assert (pk_iut is not None)
+        btp.gap_passkey_confirm(iut, TESTER_ADDR, 1)
+    except TimeoutError as e:
+        if valid:
+            raise e
 
 
 def test_SMP_Client_SC_Passkey_Entry(iut, valid):
@@ -240,9 +244,10 @@ def test_SMP_Client_SC_Passkey_Entry(iut, valid):
     future = btp.gap_passkey_entry_req_ev(iut)
     try:
         wait_futures([future], timeout=EV_TIMEOUT)
-    except TimeoutError:
-        return
-    btp.gap_passkey_entry_rsp(iut, TESTER_ADDR, TESTER_PASSKEY)
+        btp.gap_passkey_entry_rsp(iut, TESTER_ADDR, TESTER_PASSKEY)
+    except TimeoutError as e:
+        if valid:
+            raise e
 
 
 def test_Advertising_Data(iut, valid):
@@ -343,10 +348,13 @@ class AutomationHandler(threading.Thread):
             if hdl is None:
                 raise Exception("Unsupported test group: ", test_group)
 
+            # valid = 'valid' in test_group
+            # Assume all test cases are invalid
+            valid = False
+
             self.processing_lock.acquire()
             logging.debug("Acquire lock")
             # Execute test handler
-            valid = 'valid' in test_group
             hdl(self.iut, valid)
             logging.debug("Release lock")
             self.processing_lock.release()
