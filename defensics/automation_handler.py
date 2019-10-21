@@ -6,15 +6,17 @@ import threading
 from queue import Queue, Full
 
 from pybtp import btp, defs
-from pybtp.types import BTPError
+from pybtp.types import BTPError, IOCap
+from pybtp.utils import wait_futures
 from stack.gap import BleAddress
 from stack.gatt import GattDB, GattValue
-from testcases.utils import preconditions
+from testcases.utils import preconditions, EV_TIMEOUT, find_adv_by_addr
 
-TESTER_ADDR = BleAddress('00:1B:DC:F2:1C:48', 0)
+TESTER_ADDR = BleAddress('001bdcf21c48', 0)
 TESTER_READ_HDL = '0x0003'
 TESTER_WRITE_HDL = '0x0005'
 TESTER_SERVICE_UUID = '180F'
+TESTER_PASSKEY = '000000'
 
 INSTR_STEP_BEFORE_RUN = '/before-run'
 INSTR_STEP_BEFORE_CASE = '/before-case'
@@ -33,7 +35,14 @@ def test_case_check_health(iut):
     btp.gap_read_ctrl_info(iut)
 
 
-def test_ATT_Client_Exchange_MTU(iut):
+def test_ATT_Server(iut, valid):
+    test_case_setup(iut)
+    btp.gap_set_conn(iut)
+    btp.gap_set_gendiscov(iut)
+    btp.gap_adv_ind_on(iut)
+
+
+def test_ATT_Client_Exchange_MTU(iut, valid):
     test_case_setup(iut)
     btp.gap_conn(iut, TESTER_ADDR)
     btp.gap_wait_for_connection(iut)
@@ -45,7 +54,7 @@ def test_ATT_Client_Exchange_MTU(iut):
     test_case_check_health(iut)
 
 
-def test_ATT_Client_Discover_Primary_Services(iut):
+def test_ATT_Client_Discover_Primary_Services(iut, valid):
     test_case_setup(iut)
     btp.gap_conn(iut, TESTER_ADDR)
     btp.gap_wait_for_connection(iut)
@@ -58,7 +67,7 @@ def test_ATT_Client_Discover_Primary_Services(iut):
     test_case_check_health(iut)
 
 
-def test_ATT_Client_Discover_Service_by_uuid(iut):
+def test_ATT_Client_Discover_Service_by_uuid(iut, valid):
     test_case_setup(iut)
     btp.gap_conn(iut, TESTER_ADDR)
     btp.gap_wait_for_connection(iut)
@@ -71,7 +80,7 @@ def test_ATT_Client_Discover_Service_by_uuid(iut):
     test_case_check_health(iut)
 
 
-def test_ATT_Client_Discover_All_Characteristics(iut):
+def test_ATT_Client_Discover_All_Characteristics(iut, valid):
     test_case_setup(iut)
     btp.gap_conn(iut, TESTER_ADDR)
     btp.gap_wait_for_connection(iut)
@@ -84,7 +93,7 @@ def test_ATT_Client_Discover_All_Characteristics(iut):
     test_case_check_health(iut)
 
 
-def test_ATT_Client_Discover_Characteristic_Descriptors(iut):
+def test_ATT_Client_Discover_Characteristic_Descriptors(iut, valid):
     test_case_setup(iut)
     btp.gap_conn(iut, TESTER_ADDR)
     btp.gap_wait_for_connection(iut)
@@ -118,7 +127,7 @@ def test_ATT_Client_Discover_Characteristic_Descriptors(iut):
     test_case_check_health(iut)
 
 
-def test_ATT_Client_Read_Attribute_Value(iut):
+def test_ATT_Client_Read_Attribute_Value(iut, valid):
     test_case_setup(iut)
     btp.gap_conn(iut, TESTER_ADDR)
     btp.gap_wait_for_connection(iut)
@@ -131,7 +140,7 @@ def test_ATT_Client_Read_Attribute_Value(iut):
     test_case_check_health(iut)
 
 
-def test_ATT_Client_Read_Long_Attribute_Value(iut):
+def test_ATT_Client_Read_Long_Attribute_Value(iut, valid):
     test_case_setup(iut)
     btp.gap_conn(iut, TESTER_ADDR)
     btp.gap_wait_for_connection(iut)
@@ -144,7 +153,7 @@ def test_ATT_Client_Read_Long_Attribute_Value(iut):
     test_case_check_health(iut)
 
 
-def test_ATT_Client_Write_Attribute_Value(iut):
+def test_ATT_Client_Write_Attribute_Value(iut, valid):
     test_case_setup(iut)
     btp.gap_conn(iut, TESTER_ADDR)
     btp.gap_wait_for_connection(iut)
@@ -157,6 +166,104 @@ def test_ATT_Client_Write_Attribute_Value(iut):
     test_case_check_health(iut)
 
 
+def test_SMP_Server_SC_Just_Works(iut, valid):
+    test_case_setup(iut)
+    btp.gap_set_io_cap(iut, IOCap.keyboard_display)
+    btp.gap_set_conn(iut)
+    btp.gap_set_gendiscov(iut)
+    btp.gap_adv_ind_on(iut)
+
+
+def test_SMP_Server_SC_Numeric_Comparison(iut, valid):
+    test_case_setup(iut)
+    btp.gap_set_io_cap(iut, IOCap.keyboard_display)
+    btp.gap_set_conn(iut)
+    btp.gap_set_gendiscov(iut)
+    btp.gap_adv_ind_on(iut)
+
+    future = btp.gap_passkey_confirm_req_ev(iut)
+    try:
+        wait_futures([future], timeout=EV_TIMEOUT)
+    except TimeoutError:
+        return
+    results = future.result()
+    pk_iut = results[1]
+    assert (pk_iut is not None)
+    btp.gap_passkey_confirm(iut, TESTER_ADDR, 1)
+
+
+def test_SMP_Server_SC_Passkey_Entry(iut, valid):
+    test_case_setup(iut)
+    btp.gap_set_io_cap(iut, IOCap.keyboard_display)
+    btp.gap_set_conn(iut)
+    btp.gap_set_gendiscov(iut)
+    btp.gap_adv_ind_on(iut)
+
+    future = btp.gap_passkey_entry_req_ev(iut)
+    try:
+        wait_futures([future], timeout=EV_TIMEOUT)
+    except TimeoutError:
+        return
+    btp.gap_passkey_entry_rsp(iut, TESTER_ADDR, TESTER_PASSKEY)
+
+
+def test_SMP_Client_SC_Just_Works(iut, valid):
+    test_case_setup(iut)
+    btp.gap_set_io_cap(iut, IOCap.keyboard_display)
+    btp.gap_conn(iut, TESTER_ADDR)
+    btp.gap_wait_for_connection(iut)
+
+
+def test_SMP_Client_SC_Numeric_Comparison(iut, valid):
+    test_case_setup(iut)
+    btp.gap_set_io_cap(iut, IOCap.keyboard_display)
+    btp.gap_conn(iut, TESTER_ADDR)
+    btp.gap_wait_for_connection(iut)
+
+    future = btp.gap_passkey_confirm_req_ev(iut)
+    try:
+        wait_futures([future], timeout=EV_TIMEOUT)
+    except TimeoutError:
+        return
+    results = future.result()
+    pk_iut = results[1]
+    assert (pk_iut is not None)
+    btp.gap_passkey_confirm(iut, TESTER_ADDR, 1)
+
+
+def test_SMP_Client_SC_Passkey_Entry(iut, valid):
+    test_case_setup(iut)
+    btp.gap_set_io_cap(iut, IOCap.keyboard_display)
+    btp.gap_conn(iut, TESTER_ADDR)
+    btp.gap_wait_for_connection(iut)
+
+    future = btp.gap_passkey_entry_req_ev(iut)
+    try:
+        wait_futures([future], timeout=EV_TIMEOUT)
+    except TimeoutError:
+        return
+    btp.gap_passkey_entry_rsp(iut, TESTER_ADDR, TESTER_PASSKEY)
+
+
+def test_Advertising_Data(iut, valid):
+    test_case_setup(iut)
+
+    def verify_f(args):
+        return find_adv_by_addr(args, TESTER_ADDR)
+
+    btp.gap_start_discov(iut)
+    future = btp.gap_device_found_ev(iut, verify_f)
+    try:
+        wait_futures([future], timeout=5)
+        btp.gap_stop_discov(iut)
+        found = future.result()
+        assert found
+    except TimeoutError as e:
+        btp.gap_stop_discov(iut)
+        if valid:
+            raise e
+
+
 before_case_handlers = {
     'ATT.MTU-exchange': test_ATT_Client_Exchange_MTU,
     'ATT.Discover-primary-services': test_ATT_Client_Discover_Primary_Services,
@@ -166,6 +273,19 @@ before_case_handlers = {
     'ATT.Read-attribute-value': test_ATT_Client_Read_Attribute_Value,
     'ATT.Read-long-attribute-value': test_ATT_Client_Read_Long_Attribute_Value,
     'ATT.Write-attribute-value': test_ATT_Client_Write_Attribute_Value,
+    'ATT.MTU-Exchange': test_ATT_Server,
+    'ATT.Primary-Service-Discovery': test_ATT_Server,
+    'ATT.Relationship-Discovery': test_ATT_Server,
+    'ATT.Characteristic-Discovery.Discover-All-Characteristics-Of-A-Service': test_ATT_Server,
+    'ATT.Characteristic-Value-Read': test_ATT_Server,
+    'ATT.Characteristic-Value-Write': test_ATT_Server,
+    'SMP.SMP-SC-just-works': test_SMP_Server_SC_Just_Works,
+    'SMP.SMP-SC-numeric-comparison': test_SMP_Server_SC_Numeric_Comparison,
+    'SMP.SMP-SC-passkey-entry': test_SMP_Server_SC_Passkey_Entry,
+    'SMPC.SMP-SC-just-works': test_SMP_Client_SC_Just_Works,
+    'SMPC.SMP-SC-numeric-comparison': test_SMP_Client_SC_Numeric_Comparison,
+    'SMPC.SMP-SC-passkey-entry': test_SMP_Client_SC_Passkey_Entry,
+    'Advertising-Data': test_Advertising_Data,
 }
 
 
@@ -206,6 +326,16 @@ class AutomationHandler(threading.Thread):
 
         test_group = params['CODE_TEST_GROUP']
 
+        test_suite = params['CODE_SUITE']
+        logging.debug('Test suite {}'.format(test_suite))
+
+        # This workaround is needed because Defensics has
+        # the same test group names for Client and Server
+        if 'smpc' in test_suite:
+            test_group = str.replace(test_group, 'SMP.', 'SMPC.')
+
+        logging.debug('Processing {}'.format(test_group))
+
         if str.startswith(instrumentation_step, INSTR_STEP_BEFORE_CASE):
 
             # Find a test handler by test group name
@@ -214,8 +344,20 @@ class AutomationHandler(threading.Thread):
                 raise Exception("Unsupported test group: ", test_group)
 
             self.processing_lock.acquire()
+            logging.debug("Acquire lock")
             # Execute test handler
-            hdl(self.iut)
+            valid = 'valid' in test_group
+            hdl(self.iut, valid)
+            logging.debug("Release lock")
+            self.processing_lock.release()
+            return
+
+        if str.startswith(instrumentation_step, INSTR_STEP_AFTER_CASE):
+            self.processing_lock.acquire()
+            logging.debug("Acquire lock")
+            # Check if IUT is ok
+            test_case_check_health(self.iut)
+            logging.debug("Release lock")
             self.processing_lock.release()
             return
 
@@ -223,7 +365,7 @@ class AutomationHandler(threading.Thread):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-        while not self.stop_event.set():
+        while not self.stop_event.is_set():
             if not self.q.empty():
                 item = self.q.get()
                 logging.debug('Getting ' + str(item) + ' : ' + str(self.q.qsize()) + ' items in queue')
@@ -236,6 +378,10 @@ class AutomationHandler(threading.Thread):
                 except AssertionError as e:
                     logging.error('Exception: Assertion error')
                     self.status.errors.append('Exception: Assertion error')
+                    self.status.verdict = 'fail'
+                except TimeoutError as e:
+                    logging.error('Exception: Timeout error')
+                    self.status.errors.append('Exception: Timeout error')
                     self.status.verdict = 'fail'
                 except Exception as e:
                     logging.error('Exception: {}'.format(str(e)))
@@ -252,6 +398,7 @@ class AutomationHandler(threading.Thread):
         if self.processing_lock.locked():
             logging.debug('Automation is still processing')
             self.processing_lock.acquire(blocking=True)
+            logging.debug('Post release')
             self.processing_lock.release()
 
         try:

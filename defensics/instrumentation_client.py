@@ -44,18 +44,8 @@ if __name__ == '__main__':
     try:
         data = send_http_get_json(url)
         print(data)
-        # data = {
-        #    logs: {'file1.log': ['Log line', 'Another line']},
-        #    verdict: 'fail'
-        # }
-        if data['logs']:
-            assert data['logs'].__class__ == dict
-            for name, lines in list(data['logs'].items()):
-                for line in lines:
-                    print(("{}: {}".format(name, line.encode('UTF-8'))))
-        if data['errors']:
-            for err in data['errors']:
-                print("Error: ", err)
+        for err in data.get('errors', []):
+            print("Error: ", err)
         if data['verdict'] == 'fail':
             # Retun failure exit code for Defensics; used with "as instrumentation"
             rv = 1
