@@ -43,7 +43,10 @@ def find_adv_by_addr(args, addr: BleAddress):
 def find_adv_by_uuid(args, uuid):
     le_adv = args
     logging.debug("matching %r", le_adv)
-    ad = parse_ad(le_adv.eir)
+    try:
+        ad = parse_ad(le_adv.eir)
+    except Exception:
+        return False
     uuids = ad_find_uuid16(ad)
 
     return uuid in uuids
