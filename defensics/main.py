@@ -3,7 +3,7 @@ import time
 from http.server import HTTPServer
 from instrumentation_server import *
 
-from defensics.automation_handler import AutomationHandler
+from defensics.btp_automation_handler import BTPAutomationHandler
 from defensics.instrumentation_server import MakeInstrumentationServer
 from projects.mynewt.iutctl import MynewtCtl
 
@@ -18,7 +18,7 @@ if __name__ == '__main__':
                         format=format)
 
     iut = MynewtCtl('/dev/ttyACM0', '683414473')
-    automation_hdl = AutomationHandler(iut)
+    automation_hdl = BTPAutomationHandler(iut)
     automation_hdl.start()
 
     httpd = HTTPServer((HOST_NAME, PORT_NUMBER),

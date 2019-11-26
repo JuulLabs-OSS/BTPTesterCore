@@ -315,7 +315,7 @@ class AutomationStatus:
         })
 
 
-class AutomationHandler(threading.Thread):
+class BTPAutomationHandler(threading.Thread):
     def __init__(self, iut):
         super().__init__()
         if iut is None:
