@@ -1,15 +1,15 @@
 import asyncio
-import json
 import logging
 import socket
 import threading
 from queue import Queue, Full
 
+from defensics.automation_status import AutomationStatus
 from pybtp import btp, defs
-from pybtp.types import BTPError, IOCap
+from pybtp.types import IOCap
 from pybtp.utils import wait_futures
 from stack.gap import BleAddress
-from stack.gatt import GattDB, GattValue
+from stack.gatt import GattDB
 from testcases.utils import preconditions, EV_TIMEOUT, find_adv_by_addr
 
 TESTER_ADDR = BleAddress('001bdc069e49', 0)
@@ -299,20 +299,6 @@ def handlers_find_starts_with(handlers, key):
         return next(v for k, v in handlers.items() if key.startswith(k))
     except StopIteration:
         return None
-
-
-class AutomationStatus:
-    def __init__(self):
-        self.status = 0
-        self.errors = []
-        self.verdict = ''
-
-    def to_json(self):
-        return json.dumps({
-            'status': self.status,
-            'errors': self.errors,
-            'verdict': self.verdict,
-        })
 
 
 class BTPAutomationHandler(threading.Thread):
