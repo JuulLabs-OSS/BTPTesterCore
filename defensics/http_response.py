@@ -1,4 +1,4 @@
-class ResponseHandler:
+class HTTPResponse:
     def __init__(self):
         self.status = 200
         self.contentType = "application/json"

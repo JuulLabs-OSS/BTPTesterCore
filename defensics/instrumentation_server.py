@@ -2,7 +2,7 @@ import json
 import logging
 from http.server import BaseHTTPRequestHandler
 
-from response_handler import ResponseHandler
+from http_response import HTTPResponse
 
 log = logging.debug
 
@@ -22,11 +22,11 @@ def MakeInstrumentationServer(automation_hdl):
             params = json.loads(post_data)
             self.automation_hdl.post(self.path, params)
 
-            rsp_hdl = ResponseHandler()
-            rsp_hdl.contents = self.automation_hdl.get_status().to_json()
-            log("Response contents: {}".format(rsp_hdl.contents))
+            rsp = HTTPResponse()
+            rsp.contents = self.automation_hdl.get_status().to_json()
+            log("Response contents: {}".format(rsp.contents))
 
-            self.respond({'handler': rsp_hdl})
+            self.respond({'rsp': rsp})
 
         def handle_http(self, handler):
             status_code = handler.get_status()
@@ -44,7 +44,7 @@ def MakeInstrumentationServer(automation_hdl):
             return bytes(content, 'UTF-8')
 
         def respond(self, opts):
-            response = self.handle_http(opts['handler'])
+            response = self.handle_http(opts['rsp'])
             self.wfile.write(response)
 
     return InstrumentationServer
