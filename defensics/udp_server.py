@@ -1,5 +1,6 @@
 import logging
 import socket
+from binascii import hexlify
 
 
 class UDPServer:
@@ -19,10 +20,10 @@ class UDPServer:
     def recv(self):
         while True:
             (data, addr) = self.sock.recvfrom(128 * 1024)
-            logging.debug("Received %s from %s" % (data, addr))
+            logging.debug("Received %s from %s" % (hexlify(data).decode(), addr))
             self.addr = addr
             yield data
 
     def send(self, data):
-        logging.debug("Sending %s to %s" % (data, self.addr))
+        logging.debug("Sending %s to %s" % (hexlify(data).decode(), self.addr))
         self.sock.sendto(data, self.addr)
