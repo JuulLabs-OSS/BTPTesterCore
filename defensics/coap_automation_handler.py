@@ -89,8 +89,11 @@ class CoapAutomationHandler(threading.Thread):
 
         for data in self.udp_server.recv():
             if self.proxy.is_ready():
-                rsp = self.proxy.send(data)
-                self.udp_server.send(rsp)
+                try:
+                    rsp = self.proxy.send(data)
+                    self.udp_server.send(rsp)
+                except TimeoutError:
+                    pass
             else:
                 raise Exception("Proxy not ready")
 
