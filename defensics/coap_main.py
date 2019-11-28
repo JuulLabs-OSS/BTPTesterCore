@@ -1,6 +1,7 @@
-#!/usr/bin/python
+import sys
+from os.path import dirname, join, abspath
 
-from __future__ import absolute_import, print_function, unicode_literals
+sys.path.insert(0, abspath(join(dirname(__file__), '..')))
 
 import logging
 import signal

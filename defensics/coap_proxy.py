@@ -1,8 +1,5 @@
-from __future__ import absolute_import, print_function, unicode_literals
-
 import logging
 import threading
-import time
 from collections import defaultdict
 from concurrent.futures.thread import ThreadPoolExecutor
 

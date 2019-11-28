@@ -2,7 +2,7 @@ import json
 import logging
 from http.server import BaseHTTPRequestHandler
 
-from http_response import HTTPResponse
+from defensics.http_response import HTTPResponse
 
 log = logging.debug
 

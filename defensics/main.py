@@ -1,7 +1,10 @@
+import sys
+from os.path import dirname, join, abspath
+sys.path.insert(0, abspath(join(dirname(__file__), '..')))
+
 import logging
 import time
 from http.server import HTTPServer
-from instrumentation_server import *
 
 from defensics.btp_automation_handler import BTPAutomationHandler
 from defensics.instrumentation_server import MakeInstrumentationServer
