@@ -1,13 +1,10 @@
-#!/usr/bin/python
-
 from __future__ import absolute_import, print_function, unicode_literals
 
 import logging
-import signal
 import threading
+import time
 from collections import defaultdict
 from concurrent.futures.thread import ThreadPoolExecutor
-from optparse import OptionParser, make_option
 
 import dbus
 import dbus.mainloop.glib
@@ -181,9 +178,10 @@ class CoapProxy(threading.Thread):
         self.device_iface, self.device_props = find_device(self.bus,
                                                            self.dev_addr,
                                                            self.adapter_id)
+
         if not self.device_iface:
             future = self._ev_handler.wait_for_event(INTERFACES_ADDED,
-                                                     self._device_found)
+                                                     self._device_added)
             adapter = find_adapter(self.bus, self.adapter_id)
             adapter.StartDiscovery()
             wait_futures([future], timeout=EV_TIMEOUT)
@@ -194,14 +192,25 @@ class CoapProxy(threading.Thread):
 
         if not self.device_props.get('ServicesResolved', None):
             future = self._ev_handler.wait_for_event(PROPERTIES_CHANGED,
+                                                     self._device_found)
+            adapter = find_adapter(self.bus, self.adapter_id)
+            adapter.StartDiscovery()
+            wait_futures([future], timeout=EV_TIMEOUT)
+            adapter.StopDiscovery()
+            self.device_iface, self.device_props = find_device(self.bus,
+                                                               self.dev_addr,
+                                                               self.adapter_id)
+
+            future = self._ev_handler.wait_for_event(PROPERTIES_CHANGED,
                                                      self._device_connected)
             self.device_iface.Connect()
             wait_futures([future], timeout=EV_TIMEOUT)
 
-            print('Connected')
             self.device_iface, self.device_props = find_device(self.bus,
                                                                self.dev_addr,
                                                                self.adapter_id)
+
+        print('Connected')
 
         self.req_char_iface, self.req_char_props = \
             find_characteristic(self.bus,
@@ -224,9 +233,6 @@ class CoapProxy(threading.Thread):
         self.rsp_char_iface.StartNotify()
 
         print('Device ready')
-
-        rsp = self.send([0x01, 0x02, 0x03])
-        print(rsp)
 
     def is_ready(self):
         return self.req_char_iface and self.rsp_char_iface
@@ -263,13 +269,25 @@ class CoapProxy(threading.Thread):
         logging.debug("Properties changed for device %s %s", path, changed)
 
         connected = changed.get("ServicesResolved", None)
-        return connected is 'True'
+        return connected
 
-    def _device_found(self, args):
+    def _device_added(self, args):
+        logging.debug("%s", self._device_found)
         path, interfaces = args
         properties = interfaces.get(DEVICE_INTERFACE)
         address = properties["Address"]
         return address == self.dev_addr
+
+    def _device_found(self, args):
+        logging.debug("%s", self._device_found)
+        interface, changed, invalidated, path = args
+        if path != self.device_iface.object_path or \
+                interface != DEVICE_INTERFACE:
+            return False
+
+        logging.debug("Properties changed for device %s %s", path, changed)
+
+        return changed.get("RSSI", None)
 
     def _interfaces_added(self, path, interfaces):
         logging.debug("%s %s", self._interfaces_added, path)
@@ -286,32 +304,3 @@ class CoapProxy(threading.Thread):
 
         self._ev_handler(PROPERTIES_CHANGED, (interface, changed,
                                               invalidated, path))
-
-
-def main():
-    format = ("%(asctime)s %(name)-20s %(levelname)s %(threadName)-40s "
-              "%(filename)-25s %(lineno)-5s %(funcName)-25s : %(message)s")
-    logging.basicConfig(level=logging.DEBUG, format=format)
-
-    logging.debug("Starting CoAP proxy")
-    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-
-    option_list = [
-        make_option("-i", "--device", action="store",
-                    type="string", dest="dev_id"),
-    ]
-    parser = OptionParser(option_list=option_list)
-
-    (options, args) = parser.parse_args()
-
-    mainloop = GObject.MainLoop()
-
-    proxy = CoapProxy(DEVICE_ADDR, options.dev_id)
-    proxy.start()
-
-    mainloop.run()
-
-
-if __name__ == "__main__":
-    main()
