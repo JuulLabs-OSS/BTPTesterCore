@@ -25,8 +25,7 @@ testcases.
 - nrfjprog
 - socat
 - adb (when testing with Android)
-- Python 3.7
-    - websockets
+- Python 3 (with requirements.txt) 
 
 #### Testing with Mynewt Nimble
 
