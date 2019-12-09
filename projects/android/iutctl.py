@@ -143,6 +143,8 @@ class AndroidCtl(IutCtl):
         self._btp_worker.accept()
 
     def reset(self):
+        self.stop()
+        self.start()
         # When pairing with newer Android versions the pairing is confirmed
         # using a notification instead of a popup window. We are not able to
         # parse this notification. To work around it we open Bluetooth
