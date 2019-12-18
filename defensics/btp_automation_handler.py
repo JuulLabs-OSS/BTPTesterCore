@@ -6,7 +6,7 @@ from queue import Queue, Full
 
 from defensics.automation_status import AutomationStatus
 from pybtp import btp, defs
-from pybtp.types import IOCap
+from pybtp.types import IOCap, BTPError
 from pybtp.utils import wait_futures
 from stack.gap import BleAddress
 from stack.gatt import GattDB
@@ -52,6 +52,11 @@ def test_ATT_Client_Exchange_MTU(iut, valid):
     btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
                       defs.GATT_EXCHANGE_MTU, ignore_status=(not valid))
 
+    try:
+        btp.gap_disconn(iut, TESTER_ADDR)
+    except BTPError:
+        pass
+
     test_case_check_health(iut)
 
 
@@ -64,6 +69,11 @@ def test_ATT_Client_Discover_Primary_Services(iut, valid):
     tuple_hdr, tuple_data = iut.btp_worker.read()
     btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
                       defs.GATT_DISC_PRIM_SVCS, ignore_status=(not valid))
+
+    try:
+        btp.gap_disconn(iut, TESTER_ADDR)
+    except BTPError:
+        pass
 
     test_case_check_health(iut)
 
@@ -78,6 +88,11 @@ def test_ATT_Client_Discover_Service_by_uuid(iut, valid):
     btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
                       defs.GATT_DISC_PRIM_UUID, ignore_status=(not valid))
 
+    try:
+        btp.gap_disconn(iut, TESTER_ADDR)
+    except BTPError:
+        pass
+
     test_case_check_health(iut)
 
 
@@ -90,6 +105,11 @@ def test_ATT_Client_Discover_All_Characteristics(iut, valid):
     tuple_hdr, tuple_data = iut.btp_worker.read()
     btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
                       defs.GATT_DISC_ALL_CHRC, ignore_status=(not valid))
+
+    try:
+        btp.gap_disconn(iut, TESTER_ADDR)
+    except BTPError:
+        pass
 
     test_case_check_health(iut)
 
@@ -125,6 +145,11 @@ def test_ATT_Client_Discover_Characteristic_Descriptors(iut, valid):
         btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
                           defs.GATT_DISC_ALL_DESC, ignore_status=(not valid))
 
+    try:
+        btp.gap_disconn(iut, TESTER_ADDR)
+    except BTPError:
+        pass
+
     test_case_check_health(iut)
 
 
@@ -137,6 +162,11 @@ def test_ATT_Client_Read_Attribute_Value(iut, valid):
     tuple_hdr, tuple_data = iut.btp_worker.read()
     btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
                       defs.GATT_READ, ignore_status=(not valid))
+
+    try:
+        btp.gap_disconn(iut, TESTER_ADDR)
+    except BTPError:
+        pass
 
     test_case_check_health(iut)
 
@@ -151,6 +181,11 @@ def test_ATT_Client_Read_Long_Attribute_Value(iut, valid):
     btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
                       defs.GATT_READ_LONG, ignore_status=(not valid))
 
+    try:
+        btp.gap_disconn(iut, TESTER_ADDR)
+    except BTPError:
+        pass
+
     test_case_check_health(iut)
 
 
@@ -163,6 +198,11 @@ def test_ATT_Client_Write_Attribute_Value(iut, valid):
     tuple_hdr, tuple_data = iut.btp_worker.read()
     btp.btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATT,
                       defs.GATT_WRITE, ignore_status=(not valid))
+
+    try:
+        btp.gap_disconn(iut, TESTER_ADDR)
+    except BTPError:
+        pass
 
     test_case_check_health(iut)
 
