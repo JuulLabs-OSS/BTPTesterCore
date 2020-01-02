@@ -486,7 +486,7 @@ def gap_conn(iutctl: IutCtl, bd_addr: BleAddress):
 
     iutctl.btp_worker.send(*GAP['conn'], data=data_ba)
 
-    gap_command_rsp_succ(iutctl)
+    gap_command_rsp_succ(iutctl, defs.GAP_CONNECT)
 
 
 def gap_disconn(iutctl: IutCtl, bd_addr: BleAddress):
@@ -499,7 +499,7 @@ def gap_disconn(iutctl: IutCtl, bd_addr: BleAddress):
 
     iutctl.btp_worker.send(*GAP['disconn'], data=data_ba)
 
-    gap_command_rsp_succ(iutctl)
+    gap_command_rsp_succ(iutctl, defs.GAP_DISCONNECT)
 
 
 def verify_not_connected(iutctl: IutCtl, description):
@@ -517,7 +517,7 @@ def gap_set_io_cap(iutctl: IutCtl, io_cap):
 
     iutctl.btp_worker.send(*GAP['set_io_cap'], data=chr(io_cap))
 
-    gap_command_rsp_succ(iutctl)
+    gap_command_rsp_succ(iutctl, defs.GAP_SET_IO_CAP)
 
 
 def gap_pair(iutctl: IutCtl, bd_addr: BleAddress):
@@ -528,7 +528,7 @@ def gap_pair(iutctl: IutCtl, bd_addr: BleAddress):
     iutctl.btp_worker.send(*GAP['pair'], data=data_ba)
 
     # Expected result
-    gap_command_rsp_succ(iutctl)
+    gap_command_rsp_succ(iutctl, defs.GAP_PAIR)
 
 
 def gap_unpair(iutctl: IutCtl, bd_addr: BleAddress):
@@ -569,7 +569,7 @@ def gap_passkey_entry_rsp(iutctl: IutCtl, bd_addr: BleAddress, passkey):
 
     iutctl.btp_worker.send(*GAP['passkey_entry_rsp'], data=data_ba)
 
-    gap_command_rsp_succ(iutctl)
+    gap_command_rsp_succ(iutctl, defs.GAP_PASSKEY_ENTRY)
 
 
 def gap_reset(iutctl: IutCtl):
@@ -577,7 +577,7 @@ def gap_reset(iutctl: IutCtl):
 
     iutctl.btp_worker.send(*GAP['reset'])
 
-    gap_command_rsp_succ(iutctl)
+    gap_command_rsp_succ(iutctl, defs.GAP_RESET)
 
 
 def gap_passkey_confirm(iutctl: IutCtl, bd_addr: BleAddress, match):
@@ -588,7 +588,7 @@ def gap_passkey_confirm(iutctl: IutCtl, bd_addr: BleAddress, match):
 
     iutctl.btp_worker.send(*GAP['passkey_confirm'], data=data_ba)
 
-    gap_command_rsp_succ(iutctl)
+    gap_command_rsp_succ(iutctl, defs.GAP_PASSKEY_CONFIRM)
 
     iutctl.stack.passkey_confirm_cb(bd_addr, match)
 
@@ -602,7 +602,7 @@ def gap_set_conn(iutctl: IutCtl):
 
     iutctl.btp_worker.send(*GAP['set_conn'])
 
-    tuple_data = gap_command_rsp_succ(iutctl)
+    tuple_data = gap_command_rsp_succ(iutctl, defs.GAP_SET_CONNECTABLE)
     __gap_current_settings_update(iutctl.stack.gap, tuple_data)
 
 
@@ -615,7 +615,7 @@ def gap_set_nonconn(iutctl: IutCtl):
 
     iutctl.btp_worker.send(*GAP['set_nonconn'])
 
-    tuple_data = gap_command_rsp_succ(iutctl)
+    tuple_data = gap_command_rsp_succ(iutctl, defs.GAP_SET_CONNECTABLE)
     __gap_current_settings_update(iutctl.stack.gap, tuple_data)
 
 
@@ -628,7 +628,7 @@ def gap_set_nondiscov(iutctl: IutCtl):
 
     iutctl.btp_worker.send(*GAP['set_nondiscov'])
 
-    tuple_data = gap_command_rsp_succ(iutctl)
+    tuple_data = gap_command_rsp_succ(iutctl, defs.GAP_SET_DISCOVERABLE)
     __gap_current_settings_update(iutctl.stack.gap, tuple_data)
 
 
@@ -637,7 +637,7 @@ def gap_set_gendiscov(iutctl: IutCtl):
 
     iutctl.btp_worker.send(*GAP['set_gendiscov'])
 
-    tuple_data = gap_command_rsp_succ(iutctl)
+    tuple_data = gap_command_rsp_succ(iutctl, defs.GAP_SET_DISCOVERABLE)
     __gap_current_settings_update(iutctl.stack.gap, tuple_data)
 
 
@@ -646,7 +646,7 @@ def gap_set_limdiscov(iutctl: IutCtl):
 
     iutctl.btp_worker.send(*GAP['set_limdiscov'])
 
-    tuple_data = gap_command_rsp_succ(iutctl)
+    tuple_data = gap_command_rsp_succ(iutctl, defs.GAP_SET_DISCOVERABLE)
     __gap_current_settings_update(iutctl.stack.gap, tuple_data)
 
 
@@ -655,7 +655,7 @@ def gap_set_powered_on(iutctl: IutCtl):
 
     iutctl.btp_worker.send(*GAP['set_powered_on'])
 
-    tuple_data = gap_command_rsp_succ(iutctl)
+    tuple_data = gap_command_rsp_succ(iutctl, defs.GAP_SET_POWERED)
     __gap_current_settings_update(iutctl.stack.gap, tuple_data)
 
 
@@ -664,7 +664,7 @@ def gap_set_powered_off(iutctl: IutCtl):
 
     iutctl.btp_worker.send(*GAP['set_powered_off'])
 
-    tuple_data = gap_command_rsp_succ(iutctl)
+    tuple_data = gap_command_rsp_succ(iutctl, defs.GAP_SET_POWERED)
     __gap_current_settings_update(iutctl.stack.gap, tuple_data)
 
 
@@ -700,7 +700,7 @@ def gap_start_discov(iutctl: IutCtl, transport='le', type='active',
 
     iutctl.btp_worker.send(*GAP['start_discov'], data=chr(flags))
 
-    gap_command_rsp_succ(iutctl)
+    gap_command_rsp_succ(iutctl, defs.GAP_START_DISCOVERY)
 
 
 def check_discov_results(iutctl: IutCtl, addr: BleAddress,
@@ -765,7 +765,7 @@ def gap_stop_discov(iutctl: IutCtl):
 
     iutctl.btp_worker.send(*GAP['stop_discov'])
 
-    gap_command_rsp_succ(iutctl)
+    gap_command_rsp_succ(iutctl, defs.GAP_STOP_DISCOVERY)
 
     iutctl.stack.gap.discoverying.data = False
 
