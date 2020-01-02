@@ -28,7 +28,8 @@ from pybtp import defs
 from stack.gap import LeAdv, BleAddress, ConnParams
 from stack.gatt import GattDB, GattPrimary, GattSecondary, GattCharacteristic, \
     GattServiceIncluded, GattCharacteristicDescriptor, GattValue
-from .types import BTPError, gap_settings_btp2txt, Addr, UUID, AdType
+from .types import BTPError, gap_settings_btp2txt, Addr, UUID, AdType, BTPErrorInvalidServiceID, BTPErrorInvalidStatus, \
+    BTPErrorInvalidOpcode
 
 CONTROLLER_INDEX = 0
 
@@ -237,19 +238,16 @@ MESH = {
 }
 
 
-def btp_hdr_check(rcv_hdr, exp_svc_id, exp_op=None, ignore_status=False):
+def btp_hdr_check(rcv_hdr, exp_svc_id, exp_op=None):
     if rcv_hdr.svc_id != exp_svc_id:
-        raise BTPError("Incorrect service ID %s in the response, expected %s!"
+        raise BTPErrorInvalidServiceID("Incorrect service ID %s in the response, expected %s!"
                        % (rcv_hdr.svc_id, exp_svc_id))
 
-    if ignore_status:
-        return
-
     if rcv_hdr.op == defs.BTP_STATUS:
-        raise BTPError("Error opcode in response!")
+        raise BTPErrorInvalidStatus("Error opcode in response!")
 
     if exp_op and exp_op != rcv_hdr.op:
-        raise BTPError(
+        raise BTPErrorInvalidOpcode(
             "Invalid opcode 0x%.2x in the response, expected 0x%.2x!" %
             (rcv_hdr.op, exp_op))
 

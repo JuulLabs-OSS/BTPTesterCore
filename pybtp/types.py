@@ -51,6 +51,18 @@ class BTPError(Exception):
     pass
 
 
+class BTPErrorInvalidServiceID(BTPError):
+    pass
+
+
+class BTPErrorInvalidStatus(BTPError):
+    pass
+
+
+class BTPErrorInvalidOpcode(BTPError):
+    pass
+
+
 class SynchError(Exception):
     """Exception raised if cannot synchronize"""
     pass
