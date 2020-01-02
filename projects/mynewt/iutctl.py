@@ -105,6 +105,9 @@ class MynewtCtl(IutCtl):
         self._btp_socket = BTPSocket(self.btp_address)
         self._btp_worker = BTPWorker(self._btp_socket, 'RxWorkerMynewt-' +
                                      str(self.id))
+
+        self._event_handler = BTPEventHandler(self)
+
         self._btp_worker.open()
         self._btp_worker.register_event_handler(self._event_handler)
 
