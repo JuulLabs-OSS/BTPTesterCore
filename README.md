@@ -25,7 +25,10 @@ testcases.
 - nrfjprog
 - socat
 - adb (when testing with Android)
-- Python 3 (with requirements.txt) 
+- Python 3
+- libcairo2-dev
+- libgirepository1.0-dev
+- pip install -r requirements.txt
 
 #### Testing with Mynewt Nimble
 
