@@ -19,16 +19,21 @@ Bluetooth Low Energy features.
 `testcases/` directory contains files with the implementations of these
 testcases.
 
-#### Requirements
+#### Requirements (tested on Ubuntu 19.10)
 
-- Unix-based OS
-- nrfjprog
-- socat
-- adb (when testing with Android)
 - Python 3
-- libcairo2-dev
-- libgirepository1.0-dev
+- Ubuntu packages
+  - python3-dev
+  - libdbus-1-dev
+  - libcairo2-dev
+  - libgirepository1.0-dev
+  - socat
+  - adb (when testing with Android)
+  - virtualenv (recommended)
+
 - pip install -r requirements.txt
+
+- nrfjprog (download `nRF Command Line Tools` from Nordic's website)
 
 #### Testing with Mynewt Nimble
 
