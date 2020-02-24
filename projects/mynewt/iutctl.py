@@ -35,29 +35,24 @@ log = logging.debug
 
 # BTP communication transport: unix domain socket file name
 BTP_ADDRESS = "/tmp/bt-stack-tester"
-SERIAL_BAUDRATE = 115200
 
 
 class MynewtCtl(IutCtl):
     """Mynewt OS Control Class"""
 
-    def __init__(self, serial_port, id):
-        log("%s.%s serial_port=%s id=%s",
-            self.__class__, self.__init__.__name__, serial_port, id)
+    def __init__(self, board: Board):
+        log("%s.%s board=%r", self.__class__,
+            self.__init__.__name__, board)
 
-        self.id = id
+        self.board = board
+        self.id = self.board.id
         self.btp_address = BTP_ADDRESS + '-' + str(self.id)
-        self.serial_port = serial_port
-        self.serial_baudrate = SERIAL_BAUDRATE
-        self.socat_process = None
+        self._socat_process = None
         self._btp_socket = None
         self._btp_worker = None
-        self.rtt = None
 
-        self.log_filename = "iut-mynewt-{}.log".format(id)
+        self.log_filename = "iut-mynewt-{}.log".format(self.id)
         self.log_file = open(self.log_filename, "w")
-
-        self.board = Board(id, "nrf52", self.log_file)
 
         self._stack = Stack()
         self._event_handler = BTPEventHandler(self)
@@ -77,25 +72,10 @@ class MynewtCtl(IutCtl):
     def flush_serial(self):
         log("%s.%s", self.__class__, self.flush_serial.__name__)
         # Try to read data or timeout
-        ser = serial.Serial(port=self.serial_port,
-                            baudrate=self.serial_baudrate, timeout=1)
+        ser = serial.Serial(port=self.board.serial_port,
+                            baudrate=self.board.serial_baudrate, timeout=1)
         ser.read(99999)
         ser.close()
-
-    @staticmethod
-    def init_rtt(board_id):
-        log("%s.%s board_id=%s",
-            __class__, __class__.init_rtt.__name__, board_id)
-
-        rtt = RTT2PTY(board_id, "bttester")
-        rtt.start()
-        time.sleep(1)
-        if not rtt.is_running():
-            raise Exception("RTT2PTY failed")
-
-        iut = MynewtCtl(rtt.get_pty_file(), board_id)
-        iut.rtt = rtt
-        return iut
 
     def start(self):
         """Starts the Mynewt OS"""
@@ -113,15 +93,15 @@ class MynewtCtl(IutCtl):
 
         self.flush_serial()
 
-        socat_cmd = ("socat -x -v %s,rawer,b115200 UNIX-CONNECT:%s" %
-                     (self.serial_port, self.btp_address))
+        socat_cmd = ("socat -x -v %s,rawer,b%d UNIX-CONNECT:%s" %
+                     (self.board.serial_port, self.board.serial_baudrate, self.btp_address))
 
         log("Starting socat process: %s", socat_cmd)
 
-        self.socat_process = subprocess.Popen(shlex.split(socat_cmd),
-                                              shell=False,
-                                              stdout=self.log_file,
-                                              stderr=self.log_file)
+        self._socat_process = subprocess.Popen(shlex.split(socat_cmd),
+                                               shell=False,
+                                               stdout=self.log_file,
+                                               stderr=self.log_file)
 
         self._btp_worker.accept()
 
@@ -136,7 +116,7 @@ class MynewtCtl(IutCtl):
         if not self.board:
             return
 
-        self.board.reset()
+        self.board.reset(self.log_file)
 
     def wait_iut_ready_event(self):
         """Wait until IUT sends ready event after power up"""
@@ -160,6 +140,6 @@ class MynewtCtl(IutCtl):
             self._btp_worker = None
             self._btp_socket = None
 
-        if self.socat_process and self.socat_process.poll() is None:
-            self.socat_process.terminate()
-            self.socat_process.wait()
+        if self._socat_process and self._socat_process.poll() is None:
+            self._socat_process.terminate()
+            self._socat_process.wait()

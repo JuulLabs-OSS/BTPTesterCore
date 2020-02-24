@@ -13,10 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-import subprocess
 import logging
 import shlex
+import subprocess
 
 log = logging.debug
 
@@ -34,12 +33,32 @@ def nrf_list_devices_cmd():
     return 'nrfjprog -i'
 
 
-def nrf_reset_cmd(id=None):
+def nrf_reset_cmd(sn=None):
     cmd = 'nrfjprog -r'
-    if id:
-        cmd += ' -s {}'.format(id)
+    if sn:
+        cmd += ' -s {}'.format(sn)
 
     return cmd
+
+
+def nrf_get_tty_by_sn(sn):
+    serial_devices = {}
+    ls = subprocess.Popen("ls -l /dev/serial/by-id",
+                          stdout=subprocess.PIPE,
+                          shell=True)
+    awk = subprocess.Popen("awk '{if (NF > 5) print $(NF-2), $NF}'",
+                           stdin=ls.stdout,
+                           stdout=subprocess.PIPE,
+                           shell=True)
+    end_of_pipe = awk.stdout
+    for line in end_of_pipe:
+        device, serial = line.decode().rstrip().split(" ")
+        serial_devices[device] = serial
+
+    for device, serial in serial_devices.items():
+        if sn in device:
+            return '/dev/serial/by-id/' + serial
+    return None
 
 
 def list_available_boards():
@@ -48,32 +67,41 @@ def list_available_boards():
     return devices
 
 
+DFLT_SERIAL_BAUDRATE = 115200
+
+
 class Board:
+    def __init__(self):
+        self.log_file = None
+        self.reset_cmd = None
+        self.id = None
+        self.serial_port = None
+        self.serial_baudrate = None
 
-    nrf52 = "nrf52"
-
-    names = [
-        nrf52
-    ]
-
-    def __init__(self, board_id, board_name, log_file):
-        if board_name not in self.names:
-            raise Exception("Board name %s is not supported!" % board_name)
-
-        self.log_file = log_file
-        self.board_id = board_id
-        self.board_name = board_name
-
-        if self.board_name is self.nrf52:
-            self.reset_cmd = nrf_reset_cmd(board_id)
-
-    def reset(self):
+    def reset(self, log_file):
         log("About to reset DUT: %r", self.reset_cmd)
+
+        assert self.reset_cmd
 
         reset_process = subprocess.Popen(shlex.split(self.reset_cmd),
                                          shell=False,
-                                         stdout=self.log_file,
-                                         stderr=self.log_file)
+                                         stdout=log_file,
+                                         stderr=log_file)
 
         if reset_process.wait():
             logging.error("reset failed")
+
+
+class NordicBoard(Board):
+    def __init__(self, sn=None, serial_baudrate=DFLT_SERIAL_BAUDRATE):
+        super().__init__()
+        boards = list_available_boards()
+        self.id = get_next_id()
+        if sn:
+            self.sn = sn
+        else:
+            self.sn = boards[self.id]
+
+        self.reset_cmd = nrf_reset_cmd(self.sn)
+        self.serial_port = nrf_get_tty_by_sn(self.sn)
+        self.serial_baudrate = serial_baudrate

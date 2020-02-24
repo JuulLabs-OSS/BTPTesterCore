@@ -13,10 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
+import argparse
 import logging
 import unittest
 
+from common.board import NordicBoard
 from projects.android.iutctl import AndroidCtl
 from projects.mynewt.iutctl import MynewtCtl
 from testcases.GattTestCase import GattTestCase
@@ -24,8 +25,11 @@ from testcases.GapTestCase import GapTestCase
 
 
 def main():
+    parser = argparse.ArgumentParser(description='BTP End-to-end tester')
+    _ = parser.parse_args()
+
     print("Starting tester")
-    format = ("%(asctime)s %(name)-20s %(levelname)s %(threadName)-40s "
+    format = ("%(asctime)s %(levelname)s %(threadName)-20s "
               "%(filename)-25s %(lineno)-5s %(funcName)-25s : %(message)s")
     logging.basicConfig(level=logging.DEBUG,
                         format=format)
@@ -33,21 +37,15 @@ def main():
     logger.setLevel(logging.ERROR)
     logger.addHandler(logging.StreamHandler())
 
-    mynewt1 = MynewtCtl('/dev/ttyACM0', '683802616')
-    mynewt2 = MynewtCtl('/dev/ttyACM1', '683414473')
-    android1 = AndroidCtl('ce0918294be8353804')
-    android2 = AndroidCtl('CB512BSWU7')
+    mynewt1 = MynewtCtl(NordicBoard())
+    mynewt2 = MynewtCtl(NordicBoard())
+    # android1 = AndroidCtl('ce0918294be8353804')
+    # android2 = AndroidCtl('CB512BSWU7')
 
     def suite():
         suite = unittest.TestSuite()
-        suite.addTest(GapTestCase('test_btp_GAP_CONN_PAIR_2',
-                                  android1, android2))
-
-        # suite.addTests(GapTestCase.init_testcases(mynewt1, mynewt2))
-        # suite.addTests(GattTestCase.init_testcases(android1, android2))
-
-        # suite.addTests(GapTestCase.init_testcases(mynewt2, mynewt1))
-        # suite.addTests(GattTestCase.init_testcases(android, mynewt1))
+        suite.addTests(GapTestCase.init_testcases(mynewt1, mynewt2))
+        suite.addTests(GattTestCase.init_testcases(mynewt1, mynewt2))
         return suite
 
     runner = unittest.TextTestRunner(verbosity=2)
