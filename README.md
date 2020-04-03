@@ -30,6 +30,7 @@ testcases.
   - socat
   - adb (when testing with Android)
   - virtualenv (recommended)
+  - at (optional for run scheduling)
 
 - pip install -r requirements.txt
 
@@ -120,8 +121,12 @@ runner = unittest.TextTestRunner(verbosity=2)
 runner.run(suite())
 ```
 
-A working example can be found in `main.py` file.
-
+A working example can be found in `main.py` file. It can be run also from test.sh script.
+Running `main.py` from `test.sh` will generate two `.log` files: `logger_traces.log` with
+history of run functions and their outputs and `test.log` with reports of executed tests.
+If running test from shell script, user can define time when  tests will be run. At accepts
+many time formats,  i.e. date in format 2020-04-30, time in form 09:20 or 0920 and 
+now + n minute, hour, day.
 
 #### Testcase naming convention
 

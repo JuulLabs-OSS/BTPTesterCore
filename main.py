@@ -16,6 +16,7 @@
 import argparse
 import logging
 import unittest
+import sys
 
 from common.board import NordicBoard
 from projects.android.iutctl import AndroidCtl
@@ -32,6 +33,7 @@ def main():
     format = ("%(asctime)s %(levelname)s %(threadName)-20s "
               "%(filename)-25s %(lineno)-5s %(funcName)-25s : %(message)s")
     logging.basicConfig(level=logging.DEBUG,
+                        filename='logger_traces.log',
                         format=format)
     logger = logging.getLogger('websockets.server')
     logger.setLevel(logging.ERROR)
