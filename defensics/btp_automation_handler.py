@@ -55,7 +55,7 @@ class BTPAutomationHandler(threading.Thread):
             logging.debug("Acquire lock")
             self.test_case_handler.test_case_setup(self.iut)
             # Execute test handler
-            hdl(self.iut, valid)
+            hdl(self.test_case_handler, self.iut, valid)
             self.test_case_handler.test_case_teardown(self.iut)
             logging.debug("Release lock")
             self.processing_lock.release()
