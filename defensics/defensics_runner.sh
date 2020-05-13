@@ -34,7 +34,7 @@ CAPTURE_OUTPUT=1
 # "btle-hogp"
 # "btle-smpc"
 
-SUITE_TYPE = "btle-ad"
+SUITE_TYPE="btle-ad"
 # Path to suite to run. It should be already installed. Few paths are included in this comment for ease of use
 SUITE="/path/to/installed/suite/"
 
@@ -268,9 +268,9 @@ fi
 
 if [ $CAPTURE_OUTPUT = 1 ] ; then
   echo -e "Executed command:\n"$complete_cmd > run-info.log
-  sudo bash -c "$complete_cmd" >> run-info.log
+  bash -c "$complete_cmd" >> run-info.log
 else
   echo -e "Executed command:\n"$complete_cmd
-  sudo bash -c "$complete_cmd"
+  bash -c "$complete_cmd"
 fi
 exit 0
