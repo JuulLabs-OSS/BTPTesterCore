@@ -1,10 +1,11 @@
 import logging
 import threading
+import dbus
 from queue import Queue, Full
 
 from defensics.automation_status import AutomationStatus
 from defensics.coap_proxy import CoapProxy
-from defensics.udp_server import UDPServer
+from defensics.tcp_server import TCPServer
 from pybtp import btp
 from stack.gap import BleAddress
 from testcases.utils import preconditions
@@ -53,10 +54,10 @@ def handlers_find_starts_with(handlers, key):
 
 
 class CoapAutomationHandler(threading.Thread):
-    def __init__(self, proxy: CoapProxy, udp_server: UDPServer):
+    def __init__(self, proxy: CoapProxy, tcp_server: TCPServer):
         super().__init__()
         self.proxy = proxy
-        self.udp_server = udp_server
+        self.tcp_server = tcp_server
         self.q = Queue()
         self.processing_lock = threading.Lock()
         self.stop_event = threading.Event()  # used to signal termination to the threads
@@ -84,16 +85,20 @@ class CoapAutomationHandler(threading.Thread):
             return
 
     def run(self):
-        self.udp_server.start()
-        self.proxy.start()
+        self.tcp_server.start()
+        self.proxy.run()
 
-        for data in self.udp_server.recv():
+        for data in self.tcp_server.recv():
             if self.proxy.is_ready():
                 try:
                     rsp = self.proxy.send(data)
-                    self.udp_server.send(rsp)
+                    self.tcp_server.send(rsp)
                 except TimeoutError:
-                    pass
+                    logging.debug("Response timeout!")
+                    self.proxy.device_iface.Disconnect()
+                    self.proxy.device_iface.Connect()
+                    logging.debug("Disconnected")
+                    return 0
             else:
                 raise Exception("Proxy not ready")
 
