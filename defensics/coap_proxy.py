@@ -9,10 +9,6 @@ import dbus.mainloop.glib
 from pybtp.utils import wait_futures
 from testcases.utils import EV_TIMEOUT
 
-try:
-    from gi.repository import GObject
-except ImportError:
-    import gobject as GObject
 
 BLUEZ_SERVICE = "org.bluez"
 ADAPTER_INTERFACE = BLUEZ_SERVICE + ".Adapter1"

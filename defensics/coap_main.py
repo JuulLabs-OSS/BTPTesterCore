@@ -15,9 +15,9 @@ from defensics.coap_proxy import CoapProxy, DEVICE_ADDR
 from defensics.udp_server import UDPServer
 
 try:
-    from gi.repository import GObject
+    from gi.repository import GLib
 except ImportError:
-    import gobject as GObject
+    import gobject as GLib
 
 
 def main():
@@ -37,7 +37,7 @@ def main():
 
     (options, args) = parser.parse_args()
 
-    mainloop = GObject.MainLoop()
+    mainloop = GLib.MainLoop()
     udp = UDPServer('127.0.0.1', 5683)
     proxy = CoapProxy(DEVICE_ADDR, options.dev_id)
 
