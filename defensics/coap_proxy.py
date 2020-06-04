@@ -9,10 +9,6 @@ import dbus.mainloop.glib
 from pybtp.utils import wait_futures
 from testcases.utils import EV_TIMEOUT
 
-try:
-    from gi.repository import GObject
-except ImportError:
-    import gobject as GObject
 
 BLUEZ_SERVICE = "org.bluez"
 ADAPTER_INTERFACE = BLUEZ_SERVICE + ".Adapter1"
@@ -25,7 +21,6 @@ INTERFACES_REMOVED = 'InterfacesRemoved'
 PROPERTIES_CHANGED = 'PropertiesChanged'
 COAP_REQUEST_CHAR_UUID = 'AD7B334F-4637-4B86-90B6-9D787F03D218'
 COAP_RESPONSE_CHAR_UUID = 'E9241982-4580-42C4-8831-95048216B256'
-
 
 def get_managed_objects(bus):
     manager = dbus.Interface(bus.get_object("org.bluez", "/"),
@@ -240,8 +235,11 @@ class CoapProxy(threading.Thread):
 
         future = self._ev_handler.wait_for_event(PROPERTIES_CHANGED,
                                                  self._notification_received)
-        self.req_char_iface.WriteValue(data, {})
-        wait_futures([future], timeout=3)
+        try:
+            self.req_char_iface.WriteValue(data, {})
+        except dbus.DBusException:
+            pass
+        wait_futures([future], timeout=1)
         result = future.result()
         response = bytes(result[1]["Value"])
         return response

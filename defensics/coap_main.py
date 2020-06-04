@@ -1,5 +1,6 @@
 import sys
 from os.path import dirname, join, abspath
+from  os import execv
 
 sys.path.insert(0, abspath(join(dirname(__file__), '..')))
 
@@ -12,12 +13,12 @@ import dbus.mainloop.glib
 
 from defensics.coap_automation_handler import CoapAutomationHandler
 from defensics.coap_proxy import CoapProxy, DEVICE_ADDR
-from defensics.udp_server import UDPServer
+from defensics.tcp_server import TCPServer
 
 try:
-    from gi.repository import GObject
+    from gi.repository import GLib
 except ImportError:
-    import gobject as GObject
+    import gobject as GLib
 
 
 def main():
@@ -37,11 +38,11 @@ def main():
 
     (options, args) = parser.parse_args()
 
-    mainloop = GObject.MainLoop()
-    udp = UDPServer('127.0.0.1', 5683)
+    mainloop = GLib.MainLoop()
+    tcp = TCPServer('127.0.0.1', 5683)
     proxy = CoapProxy(DEVICE_ADDR, options.dev_id)
 
-    automation = CoapAutomationHandler(proxy, udp)
+    automation = CoapAutomationHandler(proxy, tcp)
     automation.start()
 
     mainloop.run()
