@@ -1,6 +1,5 @@
 import sys
 from os.path import dirname, join, abspath
-from  os import execv
 
 sys.path.insert(0, abspath(join(dirname(__file__), '..')))
 
@@ -15,6 +14,8 @@ from defensics.coap_automation_handler import CoapAutomationHandler
 from defensics.coap_proxy import CoapProxy, DEVICE_ADDR
 from defensics.tcp_server import TCPServer
 
+import coap_cfg
+
 try:
     from gi.repository import GLib
 except ImportError:
@@ -24,7 +25,7 @@ except ImportError:
 def main():
     format = ("%(asctime)s %(name)-20s %(levelname)s %(threadName)-40s "
               "%(filename)-25s %(lineno)-5s %(funcName)-25s : %(message)s")
-    logging.basicConfig(level=logging.DEBUG, format=format)
+    logging.basicConfig(level=logging.DEBUG, format=format, filename=coap_cfg.log_filename_temp)
 
     logging.debug("Starting CoAP proxy")
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
