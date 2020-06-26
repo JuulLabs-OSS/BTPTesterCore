@@ -87,18 +87,22 @@ class CoapAutomationHandler(threading.Thread):
     def run(self):
         self.tcp_server.start()
         self.proxy.run()
-
-        for data in self.tcp_server.recv():
+        received_data = self.tcp_server.recv()
+        for data in received_data:
             if self.proxy.is_ready():
                 try:
                     rsp = self.proxy.send(data)
                     self.tcp_server.send(rsp)
                 except TimeoutError:
                     logging.debug("Response timeout!")
+
                     self.proxy.device_iface.Disconnect()
-                    self.proxy.device_iface.Connect()
                     logging.debug("Disconnected")
-                    return 0
+                    self.proxy.device_iface.Connect()
+                    logging.debug("Reconnected")
+                    # ignore the rest of data by reconnecting with defensics
+                    self.tcp_server.conn.close()
+                    self.tcp_server.start()
             else:
                 raise Exception("Proxy not ready")
 

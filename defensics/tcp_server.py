@@ -24,8 +24,6 @@ class TCPServer:
         self.conn, self.addr = self.sock.accept()
         logging.info("Connecion address: %s, port %d", self.addr[0], self.addr[1])
 
-
-
     def recv(self):
         while True:
             try:

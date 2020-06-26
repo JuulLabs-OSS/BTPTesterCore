@@ -43,7 +43,10 @@ def main():
     proxy = CoapProxy(DEVICE_ADDR, options.dev_id)
 
     automation = CoapAutomationHandler(proxy, tcp)
-    automation.start()
+    while (not automation.is_alive()):
+        automation = CoapAutomationHandler(proxy, tcp)
+        automation.start()
+        logging.debug('Proxy connected')
 
     mainloop.run()
 
