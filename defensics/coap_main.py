@@ -1,6 +1,5 @@
 import sys
 from os.path import dirname, join, abspath
-from  os import execv
 
 sys.path.insert(0, abspath(join(dirname(__file__), '..')))
 
@@ -14,6 +13,7 @@ import dbus.mainloop.glib
 from defensics.coap_automation_handler import CoapAutomationHandler
 from defensics.coap_proxy import CoapProxy, DEVICE_ADDR
 from defensics.tcp_server import TCPServer
+from defensics.tcp_data_handler import DataHandler
 
 try:
     from gi.repository import GLib
@@ -42,9 +42,13 @@ def main():
     tcp = TCPServer('127.0.0.1', 5683)
     proxy = CoapProxy(DEVICE_ADDR, options.dev_id)
 
-    automation = CoapAutomationHandler(proxy, tcp)
-    automation.start()
+    automation = DataHandler(proxy, tcp)
 
+    while not automation.is_alive():
+        automation.start()
+        logging.debug('Automation started')
+    instrumentation_hdl = CoapAutomationHandler()
+    instrumentation_hdl.make_server('localhost', 8000)
     mainloop.run()
 
 

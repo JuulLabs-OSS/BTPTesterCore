@@ -1,17 +1,16 @@
 import logging
+import socket
 import threading
-import dbus
 from queue import Queue, Full
+import asyncio
+from http.server import HTTPServer
+from multiprocessing import Process
 
 from defensics.automation_status import AutomationStatus
-from defensics.coap_proxy import CoapProxy
-from defensics.tcp_server import TCPServer
-from pybtp import btp
+from defensics.instrumentation_server import MakeInstrumentationServer
 from stack.gap import BleAddress
-from testcases.utils import preconditions
 
 TESTER_ADDR = BleAddress('001bdc069e49', 0)
-# TESTER_ADDR = BleAddress('001bdcf21c48', 0)
 TESTER_READ_HDL = '0x0003'
 TESTER_WRITE_HDL = '0x0005'
 TESTER_SERVICE_UUID = '180F'
@@ -25,27 +24,6 @@ INSTR_STEP_INSTR_FAIL = '/instrument-fail'
 INSTR_STEP_AFTER_RUN = '/after-run'
 
 
-def test_case_setup(iut):
-    iut.wait_iut_ready_event()
-    preconditions(iut)
-
-
-def test_case_check_health(iut):
-    btp.gap_read_ctrl_info(iut)
-
-
-def test_ATT_Server(iut, valid):
-    test_case_setup(iut)
-    btp.gap_set_conn(iut)
-    btp.gap_set_gendiscov(iut)
-    btp.gap_adv_ind_on(iut)
-
-
-before_case_handlers = {
-    'ATT.MTU-Exchange': test_ATT_Server,
-}
-
-
 def handlers_find_starts_with(handlers, key):
     try:
         return next(v for k, v in handlers.items() if key.startswith(k))
@@ -54,10 +32,8 @@ def handlers_find_starts_with(handlers, key):
 
 
 class CoapAutomationHandler(threading.Thread):
-    def __init__(self, proxy: CoapProxy, tcp_server: TCPServer):
+    def __init__(self):
         super().__init__()
-        self.proxy = proxy
-        self.tcp_server = tcp_server
         self.q = Queue()
         self.processing_lock = threading.Lock()
         self.stop_event = threading.Event()  # used to signal termination to the threads
@@ -85,53 +61,23 @@ class CoapAutomationHandler(threading.Thread):
             return
 
     def run(self):
-        self.tcp_server.start()
-        self.proxy.run()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
-        for data in self.tcp_server.recv():
-            if self.proxy.is_ready():
+        while not self.stop_event.is_set():
+            if not self.q.empty():
+                item = self.q.get()
+                logging.debug('Getting ' + str(item) + ' : ' + str(self.q.qsize()) + ' items in queue')
                 try:
-                    rsp = self.proxy.send(data)
-                    self.tcp_server.send(rsp)
-                except TimeoutError:
-                    logging.debug("Response timeout!")
-                    self.proxy.device_iface.Disconnect()
-                    self.proxy.device_iface.Connect()
-                    logging.debug("Disconnected")
-                    return 0
-            else:
-                raise Exception("Proxy not ready")
-
-
-        # loop = asyncio.new_event_loop()
-        # asyncio.set_event_loop(loop)
-        #
-        # while not self.stop_event.is_set():
-        #     if not self.q.empty():
-        #         item = self.q.get()
-        #         logging.debug('Getting ' + str(item) + ' : ' + str(self.q.qsize()) + ' items in queue')
-        #         try:
-        #             self.process(item)
-        #         except socket.timeout as e:
-        #             logging.error('Exception: BTP Timeout')
-        #             self.status.errors.append('Exception: BTP Timeout')
-        #             self.status.verdict = 'fail'
-        #         except AssertionError as e:
-        #             logging.error('Exception: Assertion error')
-        #             self.status.errors.append('Exception: Assertion error')
-        #             self.status.verdict = 'fail'
-        #         except TimeoutError as e:
-        #             logging.error('Exception: Timeout error')
-        #             self.status.errors.append('Exception: Timeout error')
-        #             self.status.verdict = 'fail'
-        #         except Exception as e:
-        #             logging.error('Exception: {}'.format(str(e)))
-        #             self.status.errors.append(str(e))
-        #             self.status.verdict = 'fail'
-        #         finally:
-        #             if self.processing_lock.locked():
-        #                 self.processing_lock.release()
-        # return
+                    self.process(item)
+                except Exception as e:
+                    logging.error('Exception: {}'.format(str(e)))
+                    self.status.errors.append(str(e))
+                    self.status.verdict = 'fail'
+                finally:
+                    if self.processing_lock.locked():
+                        self.processing_lock.release()
+        return
 
     def post(self, instrumentation_step, params):
         # If we receive next step and we are still processing
@@ -158,3 +104,20 @@ class CoapAutomationHandler(threading.Thread):
 
     def stop(self):
         self.stop_event.set()
+
+    def parallel(func):
+        def parallel_func(*args, **kw):
+            p = Process(target=func, args=args, kwargs=kw)
+            p.start()
+        return parallel_func
+
+    @parallel
+    def make_server(self, host, port):
+        self.start()
+        httpd = HTTPServer((host, port),
+                           MakeInstrumentationServer(self))
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            httpd.shutdown()
+            return 0
