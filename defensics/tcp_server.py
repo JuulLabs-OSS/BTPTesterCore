@@ -1,8 +1,5 @@
 import logging
 import socket
-import threading
-from binascii import hexlify
-import dbus
 
 
 class TCPServer:
