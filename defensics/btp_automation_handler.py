@@ -126,3 +126,4 @@ class BTPAutomationHandler(threading.Thread):
 
     def stop(self):
         self.stop_event.set()
+
