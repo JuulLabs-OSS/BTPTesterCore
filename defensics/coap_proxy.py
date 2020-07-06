@@ -9,7 +9,6 @@ import dbus.mainloop.glib
 from pybtp.utils import wait_futures
 from testcases.utils import EV_TIMEOUT
 
-
 BLUEZ_SERVICE = "org.bluez"
 ADAPTER_INTERFACE = BLUEZ_SERVICE + ".Adapter1"
 DEVICE_INTERFACE = BLUEZ_SERVICE + ".Device1"
@@ -21,6 +20,7 @@ INTERFACES_REMOVED = 'InterfacesRemoved'
 PROPERTIES_CHANGED = 'PropertiesChanged'
 COAP_REQUEST_CHAR_UUID = 'AD7B334F-4637-4B86-90B6-9D787F03D218'
 COAP_RESPONSE_CHAR_UUID = 'E9241982-4580-42C4-8831-95048216B256'
+
 
 def get_managed_objects(bus):
     manager = dbus.Interface(bus.get_object("org.bluez", "/"),
@@ -134,7 +134,7 @@ class DBusEventHandler:
         return True
 
 
-class CoapProxy(threading.Thread):
+class CoapProxy():
     def __init__(self, dev_addr, adapter_id):
         self.dev_addr = dev_addr
         self.adapter_id = adapter_id
@@ -202,7 +202,7 @@ class CoapProxy(threading.Thread):
                                                                self.dev_addr,
                                                                self.adapter_id)
 
-        print('Connected')
+        logging.debug('Connected')
 
         self.req_char_iface, self.req_char_props = \
             find_characteristic(self.bus,
@@ -210,7 +210,7 @@ class CoapProxy(threading.Thread):
                                 COAP_REQUEST_CHAR_UUID)
 
         if not self.req_char_iface:
-            print("Couldn't find CoAP Request characteristic")
+            logging.debug("Couldn't find CoAP Request characteristic")
             return
 
         self.rsp_char_iface, self.rsp_char_props = \
@@ -219,12 +219,13 @@ class CoapProxy(threading.Thread):
                                 COAP_RESPONSE_CHAR_UUID)
 
         if not self.rsp_char_iface:
-            print("Couldn't find CoAP Response characteristic")
+            logging.debug("Couldn't find CoAP Response characteristic")
             return
 
         self.rsp_char_iface.StartNotify()
 
-        print('Device ready')
+        logging.debug('Device ready')
+        return 0
 
     def is_ready(self):
         return self.req_char_iface and self.rsp_char_iface
@@ -265,6 +266,15 @@ class CoapProxy(threading.Thread):
 
         connected = changed.get("ServicesResolved", None)
         return connected
+
+    def _device_disconnected(self, args):
+        interface, changed, invalidated, path = args
+        if path != self.device_iface.object_path or \
+                interface != DEVICE_INTERFACE:
+            return False
+
+        logging.debug("Properties changed for device %s %s", path, changed)
+        return
 
     def _device_added(self, args):
         logging.debug("%s", self._device_found)

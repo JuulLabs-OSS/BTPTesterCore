@@ -1,5 +1,6 @@
 import logging
 import socket
+import os
 
 
 class TCPServer:
@@ -16,12 +17,14 @@ class TCPServer:
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         logging.info("Listening on tcp %s:%s" % (self.host, self.port))
-        self.sock.bind(('', self.port))
+        try:
+            self.sock.bind(('', self.port))
+        except OSError:
+            logging.error('OSError: unable to bind socket. Terminating...')
+            os._exit(1)
         self.sock.listen(10)
         self.conn, self.addr = self.sock.accept()
         logging.info("Connecion address: %s, port %d", self.addr[0], self.addr[1])
-
-
 
     def recv(self):
         while True:

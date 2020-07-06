@@ -4,15 +4,21 @@ import logging
 from defensics.coap_proxy import CoapProxy
 from defensics.tcp_server import TCPServer
 
+
 class DataHandler(threading.Thread):
     def __init__(self, proxy: CoapProxy, tcp_server: TCPServer):
         super().__init__()
         self.proxy = proxy
         self.tcp_server = tcp_server
+        logging.debug('local proxy: ' + str(self.proxy) + 'global proxy: ' + str(proxy))
 
     def run(self):
+        rc = 1
+        while rc != 0:
+            rc = self.proxy.run()
+            logging.debug('Proxy retry')
+        logging.debug(str(self.proxy.device_iface) + str(self.proxy.req_char_iface) + str(self.proxy.rsp_char_iface))
         self.tcp_server.start()
-        self.proxy.run()
 
         for data in self.tcp_server.recv():
             if self.proxy.is_ready():
@@ -21,11 +27,9 @@ class DataHandler(threading.Thread):
                     self.tcp_server.send(rsp)
                 except TimeoutError:
                     logging.debug("Response timeout!")
-                    self.proxy.device_iface.Disconnect()
-                    self.proxy.device_iface.Connect()
+                    # because proxy isn't run in separate process, it can easily be restarted
+                    self.proxy.run()
                     logging.debug("Reconnecting")
-                    self.tcp_server.conn.close()
-                    self.tcp_server.conn, self.tcp_server.addr = \
-                        self.tcp_server.sock.accept()
             else:
-                raise Exception("Proxy not ready")
+                logging.error('proxy not ready')
+                self.proxy.run()
