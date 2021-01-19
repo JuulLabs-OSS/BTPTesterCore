@@ -15,6 +15,8 @@ from defensics.tooling import *
 from stack.gap import BleAddress
 from coap_config import *
 from os import devnull
+from datetime import datetime
+import coap_cfg
 
 TESTER_ADDR = BleAddress('001bdc069e49', 0)
 TESTER_READ_HDL = '0x0003'
