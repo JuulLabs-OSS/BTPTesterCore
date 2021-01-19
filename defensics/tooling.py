@@ -8,8 +8,37 @@ import time
 import logging
 import signal
 from queue import Queue
+from fcntl import fcntl, F_GETFL, F_SETFL
+from os import O_NONBLOCK
+from pathlib import Path
 
 from coap_config import *
+
+def get_tty_path(name):
+    """Returns tty path (eg. /dev/ttyUSB0) of serial device with specified name
+    :param name: device name
+    :return: tty path if device found, otherwise None
+    """
+    serial_devices = {}
+    ls = subprocess.Popen(["ls", "-l", "/dev/serial/by-id"],
+                          stdout=subprocess.PIPE)
+
+    awk = subprocess.Popen("awk '{if (NF > 5) print $(NF-2), $NF}'",
+                           stdin=ls.stdout,
+                           stdout=subprocess.PIPE,
+                           shell=True)
+
+    end_of_pipe = awk.stdout
+    for line in end_of_pipe:
+        device, serial = line.decode().rstrip().split(" ")
+        serial_devices[device] = serial
+
+    for device, serial in list(serial_devices.items()):
+        if name in device:
+            tty = os.path.basename(serial)
+            return "/dev/{}".format(tty)
+
+    return None
 
 
 class BTMonitor():
@@ -78,42 +107,86 @@ class BTMonitor():
         logging.debug('btmon closed: ' + str(rc))
 
 
-class SerialOutput(threading.Thread):
-    def __init__(self, testcase=None, port='/dev/ttyACM0', bauderate=115200,
-                 path=os.getcwd(), newtmgr=None):
-        self.connection = serial.Serial(port=port, baudrate=bauderate, timeout=None)
-        self.testcase = testcase
-        self.path = path
-        self.process = None
-        self.shutdown = False
-        self.newtmgr = newtmgr
+class RTT2PTY:
+    def __init__(self):
+        self.rtt2pty_process = None
+        self.pty_name = None
+        self.serial_thread = None
+        self.stop_thread = threading.Event()
+        self.log_filename = None
+        self.log_file = None
+        self.testcase = None
 
-        super(SerialOutput, self).__init__()
+    def _start_rtt2pty_proc(self):
+        self.rtt2pty_process = subprocess.Popen('rtt2pty',
+                                                shell=False,
+                                                stdout=subprocess.PIPE,
+                                                stderr=subprocess.PIPE)
+        flags = fcntl(self.rtt2pty_process.stdout, F_GETFL) # get current p.stdout flags
+        fcntl(self.rtt2pty_process.stdout, F_SETFL, flags | O_NONBLOCK)
 
-    def run(self):
-        logging.debug('Capturing console output')
-        if self.testcase:
-            filename = str(self.testcase) + '.txt'
-        else:
-            filename = 'test.txt'
-        file = open(filename, 'a')
-        while not self.shutdown:
-            # limit data acquisition frequency
-            time.sleep(1)
-            bytesToRead = self.connection.inWaiting()
-            data = self.connection.read(bytesToRead).decode('utf-8')
-            if crash_detection:
-                if 'Unhandled interrupt' in data:
-                    self.newtmgr.check_corefile()
-            file.write(data)
+        time.sleep(3)
+        pty = None
+        try:
+            for line in iter(self.rtt2pty_process.stdout.readline, b''):
+                line = line.decode('UTF-8')
+                if line.startswith('PTY name is '):
+                    pty = line[len('PTY name is '):].strip()
+        except IOError:
+            pass
+
+        return pty
+
+    def _read_from_port(self, ser, stop_thread, file):
+        current_test = None
+        while not stop_thread.is_set():
+            if self.testcase != current_test:
+                file.write('--- tc: #' + str(self.testcase) + '---\n')
+                current_test = self.testcase
+            data = ser.read(ser.in_waiting)
+            try:
+                decoded = data.decode()
+            except UnicodeDecodeError:
+                continue
+            file.write(decoded)
             file.flush()
-        # before ending wait half a second for data to appear; save what arrived
-        time.sleep(1)
-        bytesToRead = self.connection.inWaiting()
-        data = self.connection.readline(bytesToRead).decode()
-        logging.debug('Saving console output file')
-        file.write(data)
-        file.close()
+        return 0
+
+    def start(self, log_filename):
+        self.log_filename = log_filename
+        self.pty_name = self._start_rtt2pty_proc()
+
+        self.ser = serial.Serial(self.pty_name, 115200, timeout=0)
+        self.stop_thread.clear()
+        self.log_file = open(self.log_filename, 'a')
+        self.serial_thread = threading.Thread(
+            target=self._read_from_port, args=(self.ser, self.stop_thread, self.log_file), daemon=True)
+        self.serial_thread.start()
+
+    def stop(self):
+        self.stop_thread.set()
+
+        if self.serial_thread:
+            self.serial_thread.join()
+            self.serial_thread = None
+
+        if self.log_file:
+            self.log_file.close()
+            self.log_file = None
+
+        if self.rtt2pty_process:
+            self.rtt2pty_process.send_signal(signal.SIGINT)
+            self.rtt2pty_process.wait()
+            self.rtt2pty_process = None
+
+    def rtt2pty_start(self):
+        if serial_read_enable:
+            name = 'iut-mynewt.log'
+            self.start(os.path.join(Path.cwd(), name))
+
+    def rtt2pty_stop(self):
+        if serial_read_enable:
+            self.stop()
 
 
 class NewtMgr:
