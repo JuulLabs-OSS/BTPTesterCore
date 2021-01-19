@@ -50,8 +50,8 @@ class CoapAutomationHandler(threading.Thread):
             self.max_btmon_tries = 10
         self.result_path = None
         self.test_path = None
-        self.serial_out = None
         self.newtmgr = None
+        self.rtt2pty = None
 
     def process(self, job):
         instrumentation_step, params = job
@@ -71,15 +71,15 @@ class CoapAutomationHandler(threading.Thread):
             # make folder for results
             self.result_path = Path.cwd() / asctime()
             self.result_path.mkdir(parents=True, exist_ok=True)
-            # make newtmgr instance and add connection
-            self.newtmgr = NewtMgr(profile_name='test', conn_type='oic_ble', connstring='"peer_name=c5"')
-            self.newtmgr.make_profile()
+            if crash_detection:
+                # make newtmgr instance and add connection
+                self.newtmgr = NewtMgr(profile_name='test', conn_type='oic_ble', connstring='"peer_name=c5"')
+                self.newtmgr.make_profile()
             logging.debug("Release lock")
             # consume buffered serial data by reading it and saving to /dev/null
-            self.serial_out = SerialOutput(path=devnull,
-                                           newtmgr=self.newtmgr)
-            self.serial_out.start()
-            self.serial_out.shutdown = True
+            if serial_read_enable:
+                self.rtt2pty = RTT2PTY()
+                self.rtt2pty.rtt2pty_start()
             self.processing_lock.release()
             return
 
@@ -87,9 +87,13 @@ class CoapAutomationHandler(threading.Thread):
             self.processing_lock.acquire()
             logging.debug("Executing: before case")
             # make folder for this test results
-            self.newtmgr.testcase = params['CODE_TEST_CASE']
-            self.test_path = self.result_path / ('#' + params['CODE_TEST_CASE'])
-            self.test_path.mkdir(parents=True, exist_ok=True)
+            if crash_detection:
+                self.newtmgr.testcase = params['CODE_TEST_CASE']
+            if serial_read_enable:
+                self.rtt2pty.testcase = params['CODE_TEST_CASE']
+            if btmon_enable:
+                self.test_path = self.result_path / ('#' + params['CODE_TEST_CASE'])
+                self.test_path.mkdir(parents=True, exist_ok=True)
             logging.debug("Acquire lock")
             test_case = params['CODE_TEST_CASE']
             # open btmon
@@ -104,11 +108,6 @@ class CoapAutomationHandler(threading.Thread):
 
                     rc = self.btmon.begin()
                     logging.debug(rc)
-
-            # read from serial
-            self.serial_out = SerialOutput(testcase=test_case, path=self.test_path,
-                                           newtmgr=self.newtmgr)
-            self.serial_out.start()
             logging.debug("Release lock")
             self.processing_lock.release()
             return
@@ -126,21 +125,13 @@ class CoapAutomationHandler(threading.Thread):
             logging.debug("Executing: after case")
             logging.debug("Acquire lock")
             # close btmon
+            # copy log files to results folder
             if btmon_enable:
                 self.btmon.close()
                 self.btmon = None
-            # end reading from serial
-            self.serial_out.shutdown = True
-            self.serial_out.join()
-            # copy log files to results folder
-            if btmon_enable:
                 snoop_file = Path.cwd() / (params['CODE_TEST_CASE'] + '.snoop')
                 shutil.copy(snoop_file, self.test_path)
                 Path.unlink(snoop_file)
-            serial_out_file = Path.cwd() / (params['CODE_TEST_CASE'] + '.txt')
-            shutil.copy(serial_out_file, self.test_path)
-            # coredumps are not copied, as newtmgr is run as sudo and coredumps are protected
-            Path.unlink(serial_out_file)
             logging.debug("Release lock")
             self.processing_lock.release()
             return
@@ -157,6 +148,23 @@ class CoapAutomationHandler(threading.Thread):
             self.processing_lock.acquire()
             logging.debug("Acquire lock")
             logging.debug("Executing: after run")
+            if serial_read_enable:
+                self.rtt2pty.rtt2pty_stop()
+                shutil.move('iut-mynewt.log', self.result_path)
+            final_file = coap_cfg.log_filename_final + str(datetime.now()) + '.log'
+            # delete temporary logs and create final with timestamp
+            final_server_logfile = os.path.dirname(__file__) + '/' + final_file
+            shutil.copy(os.path.dirname(__file__) + '/' + coap_cfg.log_filename_temp,
+                        final_server_logfile)
+            shutil.move(final_server_logfile, self.result_path)
+            os.remove(os.path.dirname(__file__) + '/' + coap_cfg.log_filename_temp)
+            # kill server process
+            p = subprocess.check_output(['ps', '-e', '-f'])
+            p = p.decode().splitlines()
+            for line in p:
+                if 'coap_main.py' in line:
+                    pid = int(line.split()[1])
+                    os.kill(pid, signal.SIGKILL)
             logging.debug("Release lock")
             self.processing_lock.release()
             return
