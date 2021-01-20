@@ -8,6 +8,7 @@ from http.server import HTTPServer
 from pathlib import Path
 from time import asctime
 import shutil
+import shlex
 
 from defensics.automation_status import AutomationStatus
 from defensics.instrumentation_server import MakeInstrumentationServer
@@ -142,6 +143,11 @@ class CoapAutomationHandler(threading.Thread):
             self.processing_lock.acquire()
             logging.debug("Acquire lock")
             logging.debug("Executing: fail")
+            reset_process = subprocess.Popen(shlex.split(reset_cmd),
+                                             shell=False,
+                                             stdout=subprocess.PIPE,
+                                             stderr=subprocess.PIPE)
+            reset_process.wait()
             logging.debug("Release lock")
             self.processing_lock.release()
             return
