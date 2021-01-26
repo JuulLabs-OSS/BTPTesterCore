@@ -236,11 +236,8 @@ class CoapProxy():
 
         future = self._ev_handler.wait_for_event(PROPERTIES_CHANGED,
                                                  self._notification_received)
-        try:
-            self.req_char_iface.WriteValue(data, {})
-        except dbus.exceptions.DBusException:
-            self.run()
-        wait_futures([future], timeout=3)
+        self.req_char_iface.WriteValue(data, {})
+        wait_futures([future], timeout=10)
         result = future.result()
         response = bytes(result[1]["Value"])
         return response
