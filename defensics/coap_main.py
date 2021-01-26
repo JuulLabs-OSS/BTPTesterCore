@@ -50,8 +50,7 @@ def main():
     while not automation.is_alive():
         automation.start()
         logging.debug('Automation started')
-    # wait assures that CoapAutomationHandler receives proxy with all interfaces
-    time.sleep(1)
+
     instrumentation_hdl = CoapAutomationHandler()
     instrumentation_hdl.make_server('localhost', 8000)
     mainloop.run()
