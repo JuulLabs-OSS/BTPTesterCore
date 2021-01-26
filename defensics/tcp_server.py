@@ -33,11 +33,11 @@ class TCPServer:
             except ConnectionResetError:
                 self.conn.close()
                 self.start()
-            logging.debug("Received %r from %s" % (data.decode('latin-1'), self.addr))
+            logging.debug("Received %r bytes from %s" % (len(data), self.addr))
             yield data
 
     def send(self, data):
-        logging.debug("Sending %r to %s", data.decode('latin-1'), self.addr)
+        logging.debug("Sending %r bytes to %s", len(data), self.addr)
         try:
             self.conn.send(data)
         except (ConnectionResetError, BrokenPipeError):
