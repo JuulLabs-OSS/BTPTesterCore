@@ -169,7 +169,11 @@ class CoapAutomationHandler(threading.Thread):
             shutil.copy(os.path.dirname(__file__) + '/' + coap_cfg.log_filename_temp,
                         final_server_logfile)
             shutil.move(final_server_logfile, self.result_path)
+
             os.remove(os.path.dirname(__file__) + '/' + coap_cfg.log_filename_temp)
+            if crash_detection:
+                add_perms_and_move_corefiles(self.result_path)
+
             # kill server process
             p = subprocess.check_output(['ps', '-e', '-f'])
             p = p.decode().splitlines()
