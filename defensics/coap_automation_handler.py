@@ -76,7 +76,9 @@ class CoapAutomationHandler(threading.Thread):
             self.result_path.mkdir(parents=True, exist_ok=True)
             if crash_detection:
                 # make newtmgr instance and add connection
-                self.newtmgr = NewtMgr(profile_name='test', conn_type='oic_ble', connstring='"peer_name=c5"')
+                self.newtmgr = NewtMgr(profile_name='test',
+                                       conn_type='oic_serial',
+                                       connstring=newtmgr_connstring)
                 self.newtmgr.make_profile()
             logging.debug("Release lock")
             # consume buffered serial data by reading it and saving to /dev/null
@@ -148,6 +150,8 @@ class CoapAutomationHandler(threading.Thread):
                                              stdout=subprocess.PIPE,
                                              stderr=subprocess.PIPE)
             reset_process.wait()
+            time.sleep(3)
+            self.newtmgr.check_corefile()
             logging.debug("Release lock")
             self.processing_lock.release()
             return

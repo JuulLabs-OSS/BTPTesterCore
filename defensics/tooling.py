@@ -11,6 +11,7 @@ from queue import Queue
 from fcntl import fcntl, F_GETFL, F_SETFL
 from os import O_NONBLOCK
 from pathlib import Path
+import shlex
 
 from coap_config import *
 
@@ -207,7 +208,7 @@ class NewtMgr:
         logging.debug(output)
         ctrl = 'Connection profile ' + self.profile_name + ' successfully added'
         if ctrl in output:
-            logging.debug('Connection profile added')
+            logging.debug('Connection profile \"' + self.profile_name + '\" added')
         else:
             logging.debug('Failed to add connection profile ')
 
@@ -217,11 +218,11 @@ class NewtMgr:
         """
         cmd = ['sudo', '-S', 'newtmgr', 'image', 'corelist', '-c', self.profile_name]
         process = subprocess.Popen(cmd, shell=False,
-                                   stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                   stdin=subprocess.PIPE, stdout=subprocess.PIPE)
         output = process.communicate(input=pwd.encode())[0].decode()
         logging.debug(output)
         # if process executed without errors, determine if corefile is present; print error otherwise
-        if output[1] == "":
+        if output != "":
             if 'Corefile present' in output:
                 logging.debug('Board has crashed, corefile present')
                 self.download_and_delete_corefile()
@@ -230,26 +231,31 @@ class NewtMgr:
             else:
                 logging.debug('Board crashed; restarting...')
                 # restart board
-                restart = subprocess.check_output(['nrfjprog', '-r']).decode()
-                logging.debug(restart)
+                reset_process = subprocess.Popen(shlex.split(reset_cmd),
+                                                 shell=False,
+                                                 stdout=subprocess.PIPE,
+                                                 stderr=subprocess.PIPE)
+                restart_out, _ = reset_process.communicate()
+                logging.debug(restart_out)
+                time.sleep(3)
                 # retry corefile check after restart
                 self.check_corefile()
-        else:
-            logging.error(output[1].decode())
 
     def download_and_delete_corefile(self):
+        logging.debug('Downloading corefile')
         if self.testcase:
-            filename = self.testcase + '.coredump'
+            filename = self.testcase + '_coredump'
         else:
-            filename = 'default.coredump'
+            filename = 'default_coredump'
         cmd = ['sudo', 'newtmgr', 'image', 'coredownload', filename, '-c', self.profile_name]
         process = subprocess.Popen(cmd, shell=False, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
         output = process.communicate(input=pwd.encode())[0].decode()
+
         if 'Done writing core file' in output:
             cmd = ['sudo', 'newtmgr', 'image', 'coreerase', '-c', self.profile_name]
             process = subprocess.Popen(cmd, shell=False, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-            process.communicate(input=pwd.encode())[0].decode()
-            return 0
+            erase_out = process.communicate(input=pwd.encode())[0].decode()
+            process.wait()
+            logging.debug('Core file erase: ', erase_out)
         else:
             logging.debug('Failed downloading corefile')
-            return 1
