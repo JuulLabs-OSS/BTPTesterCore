@@ -12,6 +12,8 @@ from fcntl import fcntl, F_GETFL, F_SETFL
 from os import O_NONBLOCK
 from pathlib import Path
 import shlex
+import glob
+from shutil import move
 
 from coap_config import *
 
@@ -259,3 +261,15 @@ class NewtMgr:
             logging.debug('Core file erase: ', erase_out)
         else:
             logging.debug('Failed downloading corefile')
+
+
+def add_perms_and_move_corefiles(dest):
+    corefiles = glob.glob('*coredump.tmp')
+    # get user name
+    usr = subprocess.check_output('whoami').decode().strip()
+    for cf in corefiles:
+        cmd = ['sudo', '-S', 'chown', usr, cf]
+        process = subprocess.Popen(cmd, shell=False, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+        output, err = process.communicate(input=pwd.encode())
+        move(cf, dest)
