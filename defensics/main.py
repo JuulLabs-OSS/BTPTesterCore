@@ -16,14 +16,14 @@ from projects.mynewt.iutctl import MynewtCtl
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Defensics instrumentation server')
     parser.add_argument('--hostname', help='Host name for the instumentation HTTP server (default: localhost)',
-                        action='store_true', default='localhost')
+                        action='store', default='localhost')
     parser.add_argument('-p', '--port', help='Port number for the instumentation HTTP server (default: 8000)',
-                        action='store_true', default=8000)
+                        action='store', default=8000)
     parser.add_argument('-i', '--index', help='Index of the Bluetooth controller for Defensics (default: 0)',
-                        action='store_true', default=0)
+                        action='store', default=0)
     parser.add_argument('-s', '--sn', help='Serial number of a Nordic board to use (default: None, system will choose'
                                            'automatically)',
-                        action='store_true', default=None)
+                        action='store', default=None)
     args = parser.parse_args()
 
     print("Starting instrumentation server")
