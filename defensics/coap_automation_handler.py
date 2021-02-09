@@ -32,7 +32,6 @@ INSTR_STEP_AFTER_CASE = '/after-case'
 INSTR_STEP_INSTR_FAIL = '/instrument-fail'
 INSTR_STEP_AFTER_RUN = '/after-run'
 
-
 def handlers_find_starts_with(handlers, key):
     try:
         return next(v for k, v in handlers.items() if key.startswith(k))
@@ -41,7 +40,7 @@ def handlers_find_starts_with(handlers, key):
 
 
 class CoapAutomationHandler(threading.Thread):
-    def __init__(self):
+    def __init__(self, data_handler):
         super().__init__()
         self.q = Queue()
         self.processing_lock = threading.Lock()
@@ -55,6 +54,9 @@ class CoapAutomationHandler(threading.Thread):
         self.test_path = None
         self.newtmgr = None
         self.rtt2pty = None
+        self.data_handler = data_handler
+        # self.data_handler.stop_data_handler.set()
+        print(id(self.data_handler))
 
     def process(self, job):
         instrumentation_step, params = job
@@ -67,6 +69,8 @@ class CoapAutomationHandler(threading.Thread):
             self.processing_lock.acquire()
             logging.debug("Executing: before run")
             logging.debug("Acquire lock")
+            self.data_handler.stop_data_handler.set()
+            print(id(self.data_handler))
             # print test run info
             logging.debug('Running suite: ' + params['CODE_SUITE'])
             logging.debug('Platform version: ' + params['CODE_SUITE_PLATFORM_VERSION'])

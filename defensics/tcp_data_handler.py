@@ -11,7 +11,7 @@ class DataHandler(threading.Thread):
         super().__init__()
         self.proxy = proxy
         self.tcp_server = tcp_server
-        self.skipping = False
+        self.stop_data_handler = threading.Event()
         logging.debug('local proxy: ' + str(self.proxy) + 'global proxy: ' + str(proxy))
 
     def _run_proxy(self):
@@ -57,6 +57,10 @@ class DataHandler(threading.Thread):
             self._handle_dbus_exception(ex)
 
         for data in self.tcp_server.recv():
+            print(self.stop_data_handler.is_set())
+            # if self.stop_data_handler:
+            #     self.stop_data_handler = False
+            #     break
             if self.proxy.is_ready():
                 # skipping long data packets, as they're continuation of previously sent long data. Shorter ones
                 # might be beginning of new data, so don't ignore them and cancel skip.
