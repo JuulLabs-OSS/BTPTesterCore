@@ -7,21 +7,11 @@ import logging
 import signal
 from optparse import OptionParser, make_option
 
-import dbus
-import dbus.mainloop.glib
-
 from defensics.coap_automation_handler import CoapAutomationHandler
-from defensics.coap_proxy import CoapProxy, DEVICE_ADDR
-from defensics.tcp_server import TCPServer
-from defensics.tcp_data_handler import DataHandler
-import time
+
 
 import coap_cfg
 
-try:
-    from gi.repository import GLib
-except ImportError:
-    import gobject as GLib
 
 
 def main():
@@ -30,7 +20,7 @@ def main():
     logging.basicConfig(level=logging.DEBUG, format=format, filename=coap_cfg.log_filename_temp)
 
     logging.debug("Starting CoAP proxy")
-    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     option_list = [
@@ -41,19 +31,9 @@ def main():
 
     (options, args) = parser.parse_args()
 
-    mainloop = GLib.MainLoop()
-    tcp = TCPServer('127.0.0.1', 5683)
-    proxy = CoapProxy(DEVICE_ADDR, options.dev_id)
-
-    automation = DataHandler(proxy, tcp)
-
-    while not automation.is_alive():
-        automation.start()
-        logging.debug('Automation started')
-
-    instrumentation_hdl = CoapAutomationHandler()
+    instrumentation_hdl = CoapAutomationHandler(options)
     instrumentation_hdl.make_server('localhost', 8000)
-    mainloop.run()
+
 
 
 if __name__ == "__main__":
