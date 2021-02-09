@@ -14,7 +14,7 @@ from defensics.coap_automation_handler import CoapAutomationHandler
 from defensics.coap_proxy import CoapProxy, DEVICE_ADDR
 from defensics.tcp_server import TCPServer
 from defensics.tcp_data_handler import DataHandler
-import time
+
 
 import coap_cfg
 
@@ -51,7 +51,7 @@ def main():
         automation.start()
         logging.debug('Automation started')
 
-    instrumentation_hdl = CoapAutomationHandler()
+    instrumentation_hdl = CoapAutomationHandler(automation)
     instrumentation_hdl.make_server('localhost', 8000)
     mainloop.run()
 
