@@ -69,8 +69,7 @@ class CoapAutomationHandler(threading.Thread):
             self.processing_lock.acquire()
             logging.debug("Executing: before run")
             logging.debug("Acquire lock")
-            self.data_handler.stop_data_handler.set()
-            print(id(self.data_handler))
+            self.data_handler.start()
             # print test run info
             logging.debug('Running suite: ' + params['CODE_SUITE'])
             logging.debug('Platform version: ' + params['CODE_SUITE_PLATFORM_VERSION'])
@@ -89,6 +88,9 @@ class CoapAutomationHandler(threading.Thread):
             if serial_read_enable:
                 self.rtt2pty = RTT2PTY()
                 self.rtt2pty.rtt2pty_start()
+            # wait until device is connected
+            while not self.data_handler.proxy.ready:
+                pass
             self.processing_lock.release()
             return
 
@@ -162,7 +164,6 @@ class CoapAutomationHandler(threading.Thread):
                                              stderr=subprocess.PIPE)
             reset_process.wait()
             time.sleep(3)
-            self.newtmgr.check_corefile()
             logging.debug("Release lock")
             self.processing_lock.release()
             return
@@ -244,7 +245,7 @@ class CoapAutomationHandler(threading.Thread):
 
     def parallel(func):
         def parallel_func(*args, **kw):
-            p = Process(target=func, args=args, kwargs=kw)
+            p = threading.Thread(target=func, args=args, kwargs=kw)
             p.start()
 
         return parallel_func

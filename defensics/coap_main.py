@@ -47,10 +47,6 @@ def main():
 
     automation = DataHandler(proxy, tcp)
 
-    while not automation.is_alive():
-        automation.start()
-        logging.debug('Automation started')
-
     instrumentation_hdl = CoapAutomationHandler(automation)
     instrumentation_hdl.make_server('localhost', 8000)
     mainloop.run()
