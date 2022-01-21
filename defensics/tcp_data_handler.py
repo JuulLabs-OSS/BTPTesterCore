@@ -24,58 +24,82 @@ class DataHandler(threading.Thread):
         logging.debug(str(self.proxy.device_iface) + str(self.proxy.req_char_iface) + str(self.proxy.rsp_char_iface))
         return rc
 
-    def _send_or_pass(self, data):
-        if len(data) > 100 and self.skipping:
+    # This function mocks response for CSM and Ping messages.
+    def mock_csm(self, data):
+        if skip_csm and (b'q\xe1\x01\xffsample' in data or data == b'\x01\xe2\x02'):
+            rsp = b'\x00\xa3'
+            self.tcp_server.send(rsp)
             return False
         else:
             return True
 
+
     def _handle_dbus_exception(self, exception):
         logging.debug(exception.args)
+
         if 'Did not receive a reply' in exception.args[0]:
             # This error is mostly caused by losing connection with IUT (it crashed or disconnected by itself)
-            pass
+            # Restart proxy to reestablish connections
+            self.stop_data_handler.set()
         elif 'Not connected' in exception.args[0]:
             # if not connected - reconnect. Skip rest of data, as it's continuation of previously
             # sent packets
-            self._run_proxy()
+            self.stop_data_handler.set()
         elif 'Operation failed with ATT error:' in exception.args[0]:
             # receiving ATT error means that rest of data is ignored by IUT and can e skipped
             pass
         elif 'Resource Not Ready' in exception.args[0]:
-            self._run_proxy()
+            self.stop_data_handler.set()
         elif 'Method "WriteValue" with signature "aya{sv}" on interface "org.bluez.GattCharacteristic1" doesn\'t exist\n':
-            self._run_proxy()
-        self.skipping = True
+            self.stop_data_handler.set()
 
     def run(self):
+        try:
+            self.proxy.run()
+        except dbus.exceptions.DBusException as ex:
+            self.errors.append({'proxy', ex})
+            print(ex.args[0])
+        self.stop_data_handler.clear()
         self.tcp_server.start()
         logging.debug('running data handler')
-        try:
-            self._run_proxy()
-        except dbus.exceptions.DBusException as ex:
-            self._handle_dbus_exception(ex)
-
-        for data in self.tcp_server.recv():
-            print(self.stop_data_handler.is_set())
-            # if self.stop_data_handler:
-            #     self.stop_data_handler = False
-            #     break
-            if self.proxy.is_ready():
-                # skipping long data packets, as they're continuation of previously sent long data. Shorter ones
-                # might be beginning of new data, so don't ignore them and cancel skip.
-                if self._send_or_pass(data):
+        while True:
+            while not self.stop_data_handler.is_set():
+                data = self.tcp_server.recv()
+                if self.mock_csm(data):
                     try:
-                        rsp = self.proxy.send(data)
-                        self.tcp_server.send(rsp)
+                        # Maximum of what we can send at once is 512, because
+                        # that is maximum size of characteristic. Attempts to
+                        # send larger payloads will result in error (like
+                        # "invalid length", "not likely"), losing connection with
+                        # DUT or, in extreme cases, locking of BlueZ
+                        to_send = [data[i:i+512] for i in range(0, len(data), 512)]
+                        for d in to_send:
+                            rsp = self.proxy.send(d)
+                            self.tcp_server.send(rsp)
                     except TimeoutError:
                         # TimeoutError is generated when no response is received, but it isn't expected for every packet
                         pass
                     except dbus.exceptions.DBusException as ex:
+                        self.errors.append({'proxy', ex})
+                        logging.debug(ex.args[0])
                         self._handle_dbus_exception(ex)
+                    except Exception as ex:
+                        self.errors.append({'tcp_server', ex})
+                        logging.debug(ex.args[0])
+                        self.stop_data_handler.set()
+            # Teardown setup
+            # restart BT controller before test
+            logging.debug('restarting radio')
+            cmd = ['sudo', '-S', 'service', 'bluetooth', 'restart']
+            process = subprocess.Popen(cmd, shell=False, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+            process.communicate(input=pwd.encode())[0].decode()
+            # Function return doesn't mean that we can access radio instantly,
+            # give some time for it to restart
+            time.sleep(1)
+            try:
+                self.proxy.run()
+            except dbus.exceptions.DBusException as ex:
+                self.errors.append({'proxy', ex})
+                print(ex.args[0])
             else:
-                logging.error('proxy broke, restarting...')
-                rc = self._run_proxy()
-                if rc != 0:
-                    logging.error('could not start proxy, aborting...')
-                    return
+                self.stop_data_handler.clear()

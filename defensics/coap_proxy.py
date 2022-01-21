@@ -164,6 +164,7 @@ class CoapProxy():
         self.req_char_props = None
         self.rsp_char_iface = None
         self.rsp_char_props = None
+        self.ready = False
         super().__init__()
 
     def run(self):
@@ -198,10 +199,6 @@ class CoapProxy():
             self.device_iface.Connect()
             wait_futures([future], timeout=EV_TIMEOUT)
 
-            self.device_iface, self.device_props = find_device(self.bus,
-                                                               self.dev_addr,
-                                                               self.adapter_id)
-
         logging.debug('Connected')
 
         self.req_char_iface, self.req_char_props = \
@@ -225,6 +222,7 @@ class CoapProxy():
         self.rsp_char_iface.StartNotify()
 
         logging.debug('Device ready')
+        self.ready = True
         return 0
 
     def is_ready(self):

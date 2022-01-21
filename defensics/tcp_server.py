@@ -27,14 +27,14 @@ class TCPServer:
         logging.info("Connecion address: %s, port %d", self.addr[0], self.addr[1])
 
     def recv(self):
-        while True:
-            try:
-                data = self.conn.recv(128 * 1024)
-            except ConnectionResetError:
-                self.conn.close()
-                self.start()
-            logging.debug("Received %r bytes from %s" % (len(data), self.addr))
-            yield data
+        try:
+            data = self.conn.recv(128 * 1024)
+        except ConnectionResetError:
+            logging.debug("Conn error")
+            self.conn.close()
+            self.start()
+        logging.debug("Received %r bytes from %s" % (len(data), self.addr))
+        return data
 
     def send(self, data):
         logging.debug("Sending %r bytes to %s", len(data), self.addr)
@@ -43,3 +43,7 @@ class TCPServer:
         except (ConnectionResetError, BrokenPipeError):
             self.sock.listen(10)
             self.conn, self.addr = self.sock.accept()
+
+    def close(self):
+        self.sock.shutdown(socket.SHUT_RDWR)
+        self.sock.close()
