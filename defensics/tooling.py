@@ -183,13 +183,11 @@ class RTT2PTY:
             self.rtt2pty_process = None
 
     def rtt2pty_start(self):
-        if serial_read_enable:
-            name = 'iut-mynewt.log'
-            self.start(os.path.join(Path.cwd(), name))
+        name = 'iut-mynewt.log'
+        self.start(os.path.join(Path.cwd(), name))
 
     def rtt2pty_stop(self):
-        if serial_read_enable:
-            self.stop()
+        self.stop()
 
 
 class NewtMgr:
@@ -227,7 +225,7 @@ class NewtMgr:
         if output != "":
             if 'Corefile present' in output:
                 logging.debug('Board has crashed, corefile present')
-                self.download_and_delete_corefile()
+                return True
             elif 'No corefiles' in output:
                 logging.debug('No corefile; system didn\'t crashed or corefile not present')
             else:
