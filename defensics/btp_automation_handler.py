@@ -97,6 +97,7 @@ class BTPAutomationHandler(threading.Thread):
                     self.status.errors.append(str(e))
                     self.status.verdict = 'fail'
                 finally:
+                    self.status.verdict = 'success'
                     if self.processing_lock.locked():
                         self.processing_lock.release()
         return
