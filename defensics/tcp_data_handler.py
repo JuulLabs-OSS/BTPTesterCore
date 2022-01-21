@@ -1,10 +1,12 @@
 import threading
 import logging
+import time
 
 from defensics.coap_proxy import CoapProxy
 from defensics.tcp_server import TCPServer
 import dbus
-
+import subprocess
+from coap_config import *
 
 class DataHandler(threading.Thread):
     def __init__(self, proxy: CoapProxy, tcp_server: TCPServer):
