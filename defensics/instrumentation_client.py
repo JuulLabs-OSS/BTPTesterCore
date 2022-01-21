@@ -46,6 +46,12 @@ if __name__ == '__main__':
         print(data)
         for err in data.get('errors', []):
             print("Error: ", err)
+        # for instrumentation wait for verdict
+        if 'as-instrumentation' in url:
+            print('Awaiting verdict')
+            while data['verdict'] == '':
+                data = send_http_get_json(url)
+                pass
         if data['verdict'] == 'fail':
             # Retun failure exit code for Defensics; used with "as instrumentation"
             rv = 1

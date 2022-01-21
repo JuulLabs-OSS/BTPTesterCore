@@ -9,6 +9,8 @@ from pathlib import Path
 from time import asctime
 import shutil
 import shlex
+import sys
+import dbus
 
 from defensics.automation_status import AutomationStatus
 from defensics.instrumentation_server import MakeInstrumentationServer
@@ -55,8 +57,28 @@ class CoapAutomationHandler(threading.Thread):
         self.newtmgr = None
         self.rtt2pty = None
         self.data_handler = data_handler
-        # self.data_handler.stop_data_handler.set()
-        print(id(self.data_handler))
+
+    def handle_errors(self):
+        if len(self.data_handler.errors) == 0:
+            logging.debug('No errors occured during test')
+            return False
+        else:
+            error = True
+        for err in self.data_handler.errors:
+            if isinstance(err, set):
+                while len(err) > 0:
+                    in_set = err.pop()
+                    if isinstance(in_set, dbus.exceptions.DBusException):
+                        if in_set.args[0] == 'proxy':
+                            logging.debug('Error:', err.args[0], 'occured in proxy')
+                        elif in_set.args[0] == 'tcp_server':
+                            logging.debug('Error:', err.args[0], 'occured in tcp_server')
+            else:
+                logging.debug('Error:', err, 'occured')
+        # set test rsp fields
+        # clear error list
+        self.data_handler.errors = []
+        return error
 
     def process(self, job):
         instrumentation_step, params = job
@@ -127,14 +149,30 @@ class CoapAutomationHandler(threading.Thread):
             self.processing_lock.acquire()
             logging.debug("Executing: as instrumentation")
             logging.debug("Acquire lock")
+            # If crash detection is enabled it means that we want to pass of
+            # fail test based on crash happening or not, and not other errors
+            # (like no response from IUT on DBus)
             if crash_detection:
                 crash = self.newtmgr.check_corefile()
                 if crash:
                     self.newtmgr.download_and_delete_corefile()
-            error = self.handle_errors()
-            result = crash or error
-            print(result)
+                    self.status.verdict = 'fail'
+                    self.status.status = 1
+                    self.status.errors.append('IUT crashed')
+                else:
+                    self.status.verdict = 'success'
+                    self.status.status = 0
+            else:
+                error = self.handle_errors()
+                if error:
+                    self.status.verdict = 'fail'
+                    self.status.status = 1
+                    self.status.errors.append('IUT crashed')
+                else:
+                    self.status.verdict = 'success'
+                    self.status.status = 0
             logging.debug("Release lock")
+
             self.processing_lock.release()
             return
 
@@ -208,7 +246,10 @@ class CoapAutomationHandler(threading.Thread):
                 try:
                     self.process(item)
                 except Exception as e:
-                    logging.error('Exception: {}'.format(str(e)))
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                    logging.error('Exception: {}'.format(str(e)) + ' in ' +
+                                  fname + ' line: ' + str(exc_tb.tb_lineno))
                     self.status.errors.append(str(e))
                     self.status.verdict = 'fail'
                 finally:

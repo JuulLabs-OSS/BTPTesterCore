@@ -12,6 +12,7 @@ class DataHandler(threading.Thread):
         self.proxy = proxy
         self.tcp_server = tcp_server
         self.stop_data_handler = threading.Event()
+        self.errors = []
         logging.debug('local proxy: ' + str(self.proxy) + 'global proxy: ' + str(proxy))
 
     def _run_proxy(self):
