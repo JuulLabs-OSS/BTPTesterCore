@@ -33,7 +33,7 @@ def MakeInstrumentationServer(automation_hdl):
 
             self.send_response(status_code)
 
-            if status_code is 200:
+            if status_code == 200:
                 content = handler.get_contents()
                 self.send_header('Content-type', handler.get_content_type())
             else:
