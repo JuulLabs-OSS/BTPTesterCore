@@ -125,6 +125,13 @@ class CoapAutomationHandler(threading.Thread):
             self.processing_lock.acquire()
             logging.debug("Executing: as instrumentation")
             logging.debug("Acquire lock")
+            if crash_detection:
+                crash = self.newtmgr.check_corefile()
+                if crash:
+                    self.newtmgr.download_and_delete_corefile()
+            error = self.handle_errors()
+            result = crash or error
+            print(result)
             logging.debug("Release lock")
             self.processing_lock.release()
             return
