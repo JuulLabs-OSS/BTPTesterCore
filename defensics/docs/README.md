@@ -227,15 +227,17 @@ Let's walk through these tabs:
 3. Advanced - here we can accommodate data collection and run control. Again, defaults are mostly sane,
    but for certain suites (e.g. CoAP) require adjusting
 4. Instrumentation allows us to interact with IUT and check it's state  by running scripts and commands.
-   BTPTester uses it to execute test cases and manage IUT. Only sub-tab that must be set up is `External`.
-   Here, we have 6 fields that must be filled as follows (BTPTesterCore_path is path to this repo, e.g. 
-   /home/user/BTPTesterCore):
+   BTPTester uses it to execute test cases and manage IUT. In sub-tab `External` are 6 fields that must be
+   filled as follows (BTPTesterCore_path is path to this repo, e.g. /home/user/BTPTesterCore):
    - `python3 BTPTesterCore_path/defensics/instrumentation_client.py http://localhost:8000/before-run`
    - `python3 BTPTesterCore_path/defensics/instrumentation_client.py http://localhost:8000/before-case`
    - `python3 BTPTesterCore_path/defensics/instrumentation_client.py http://localhost:8000/as-instrumentation`
    - `python3 BTPTesterCore_path/defensics/instrumentation_client.py http://localhost:8000/after-case`
    - `python3 BTPTesterCore_path/defensics/instrumentation_client.py http://localhost:8000/instrument-fail`
    - `python3 BTPTesterCore_path/defensics/instrumentation_client.py http://localhost:8000/after-run`
+   
+   In `Instrumentation` sub-tab `Valid case instumentation` shall be disabled - this is verified by us by
+   checking if IUT is responding to commands after test.
 5. Test cases - here test to run can be selected. Big banner allows to choose rule of picking tests (e.g.
    first and last of each group or 1%). In tree these picks might be narrowed and in table below individual
    tests can be selected
@@ -273,9 +275,7 @@ Because Defensics isn't speaking directly to IUT, additional configuration is re
       - Valid case instrumentation delay (ms): 30000
 4. Instrumentation
    - Instrumentation
-      - Valid case instrumentation: yes
-      - Instrumentation valid-case: any besides coap-tool.CoAP-basic. This test follows RFC 8974 or newer,
-        and thus is sending CSM messages, not supported by Mynewt (Mynewt follows RFC 7959)
+      - Valid case instrumentation: no. This is verified using NewtMgr
       - External: same settings as in [Defensics GUI](####Defensics-GUI)
 
 BTPTester must be configured by editing `coap_config.py`; here, you can enable:

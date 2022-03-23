@@ -61,11 +61,22 @@ class BTPAutomationHandler(threading.Thread):
             self.processing_lock.release()
             return
 
-        if str.startswith(instrumentation_step, INSTR_STEP_AFTER_CASE):
+        if str.startswith(instrumentation_step, INSTR_STEP_AS_INSTR):
             self.processing_lock.acquire()
             logging.debug("Acquire lock")
             # Check if IUT is ok
-            self.test_case_handler.test_case_check_health(self.iut)
+            try:
+                self.test_case_handler.test_case_check_health(self.iut)
+            except socket.timeout:
+                # if IUT haven't sent response at all means it crashed
+                logging.debug("IUT crashed")
+                self.status.verdict = 'fail'
+                self.status.status = 1
+                self.status.errors.append('IUT crashed')
+            finally:
+                logging.debug("IUT is alive")
+                self.status.verdict = 'success'
+                self.status.status = 0
             logging.debug("Release lock")
             self.processing_lock.release()
             return
@@ -96,10 +107,6 @@ class BTPAutomationHandler(threading.Thread):
                     logging.error('Exception: {}'.format(str(e)))
                     self.status.errors.append(str(e))
                     self.status.verdict = 'fail'
-                finally:
-                    self.status.verdict = 'success'
-                    if self.processing_lock.locked():
-                        self.processing_lock.release()
         return
 
     def post(self, instrumentation_step, params):
