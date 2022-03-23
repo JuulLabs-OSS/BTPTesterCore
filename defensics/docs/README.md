@@ -256,7 +256,10 @@ Because Defensics isn't speaking directly to IUT, additional configuration is re
    - Basic:
      - Target URI nad Port: `coap://127.0.0.1:5683`
    - Connection Settings:
-   - 52000
+     - Source Port for sending: 52000
+   - TCP/Websocket coap setup:
+     - Reuse connection: Yes
+     - Enable TLS: disabled
 2. Interoperability: choose CoAP-TCP from dropdown menu:
    
    ![Alt text](coap_dropdown.png?raw=true)
