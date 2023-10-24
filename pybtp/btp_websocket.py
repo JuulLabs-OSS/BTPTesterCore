@@ -38,10 +38,8 @@ class WebSocketThread(threading.Thread):
         self.loop = None
         self.stoprequest = threading.Event()
 
-    @asyncio.coroutine
-    def _connect(self):
-        return (yield from websockets.connect('ws://{}:{}/'.format(self.host,
-                                                                   self.port)))
+    async def _connect(self):
+        return await websockets.connect('ws://{}:{}/'.format(self.host, self.port))
 
     def connect(self, timeout=None):
         future = asyncio.run_coroutine_threadsafe(self._connect(), self.loop)
@@ -80,9 +78,8 @@ class WebSocketThread(threading.Thread):
         self.loop.set_exception_handler(self._exception_handler)
         self.loop.run_forever()
 
-    @asyncio.coroutine
-    def _close(self):
-        yield from self.websocket.close()
+    async def _close(self):
+        return await self.websocket.close()
 
     def join(self, timeout=None):
         self.stoprequest.set()
