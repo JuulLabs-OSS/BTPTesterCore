@@ -23,6 +23,7 @@ class Gatt:
         self.svcs = []
         self.chrs = []
         self.gatt_db = {}
+        self.debug = False
 
     # These definitions are for PTS compatibility
 
@@ -54,6 +55,8 @@ class Gatt:
         self.gatt_db.clear()
 
     def print_db(self):
+        if not self.debug:
+            return
         for hdl, attr in sorted(self.gatt_db.items()):
             (attr_type, value) = attr
             print("{} {} {!r}".format(hdl, attr_type, value))
@@ -202,6 +205,7 @@ class GattValue:
 class GattDB:
     def __init__(self):
         self.db = dict()
+        self.debug = False
 
     def clear(self):
         self.db.clear()
@@ -309,6 +313,8 @@ class GattDB:
         return 0xffff
 
     def print_db(self):
+        if not self.debug:
+            return
         for hdl, attr in sorted(self.db.items()):
             print("{} {!r}".format(hdl, attr))
 

@@ -3011,6 +3011,14 @@ class BTPEventHandler:
             defs.BTP_SERVICE_ID_MESH: MESH_EV,
         }
 
+    def clear_listeners(self):
+        for k, dct in self.listeners.items():
+            for key, lst in dct.items():
+                if len(lst) > 0:
+                    for listener in lst:
+                        listener.release()
+        self.listeners = defaultdict(lambda: defaultdict(list))
+
     def wait_for_event(self, svc_id, op, f):
         listener = BTPEventListener(f)
         self.listeners[svc_id][op].append(listener)
