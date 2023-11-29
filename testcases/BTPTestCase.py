@@ -15,6 +15,7 @@
 #
 
 import unittest
+import json
 
 
 class BTPTestCase(unittest.TestCase):
@@ -46,4 +47,15 @@ class BTPTestCase(unittest.TestCase):
         self.iut1.stop()
         self.iut2.stop()
 
+    def verify_skipped(self, testname):
+        if not hasattr(self, 'test_config'):
+            with open("test_config.json", "r") as read_file:
+                self.test_config = json.load(read_file)
 
+        if testname in self.test_config.get(self.iut1.get_type()).get('skipped_central'):
+            raise unittest.SkipTest(
+                self.test_config.get(self.iut1.get_type()).get('skipped_central').get(testname))
+
+        if testname in self.test_config.get(self.iut2.get_type()).get('skipped_peripheral'):
+            raise unittest.SkipTest(
+                self.test_config.get(self.iut2.get_type()).get('skipped_peripheral').get(testname))

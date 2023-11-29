@@ -143,3 +143,12 @@ class MynewtCtl(IutCtl):
         if self._socat_process and self._socat_process.poll() is None:
             self._socat_process.terminate()
             self._socat_process.wait()
+
+        if self._event_handler:
+            self._event_handler.clear_listeners()
+
+    def get_type(self):
+        return self.TYPE_MYNEWT
+
+    def __str__(self):
+        return f"MynewtCtl board id: {self.board.id}, sn: {self.board.sn}"

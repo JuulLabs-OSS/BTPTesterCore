@@ -28,8 +28,8 @@ from pybtp import defs
 from stack.gap import LeAdv, BleAddress, ConnParams
 from stack.gatt import GattDB, GattPrimary, GattSecondary, GattCharacteristic, \
     GattServiceIncluded, GattCharacteristicDescriptor, GattValue
-from .types import BTPError, gap_settings_btp2txt, Addr, UUID, AdType, BTPErrorInvalidServiceID, BTPErrorInvalidStatus, \
-    BTPErrorInvalidOpcode
+from .types import BTPError, gap_settings_btp2txt, Addr, OwnAddrType, AdDuration, UUID, AdType, \
+    BTPErrorInvalidServiceID, BTPErrorInvalidStatus, BTPErrorInvalidOpcode
 
 CONTROLLER_INDEX = 0
 
@@ -424,7 +424,7 @@ def ad_find_uuid16(ad):
     return uuids
 
 
-def gap_adv_ind_on(iutctl: IutCtl, ad=None, sd=None):
+def gap_adv_ind_on(iutctl: IutCtl, ad=None, sd=None, duration=AdDuration.forever, own_addr_type=OwnAddrType.le_identity_address):
     logging.debug("%s %r %r", gap_adv_ind_on.__name__, ad, sd)
 
     if iutctl.stack.gap.current_settings_get(
@@ -459,6 +459,8 @@ def gap_adv_ind_on(iutctl: IutCtl, ad=None, sd=None):
     data_ba.extend([len(sd_ba)])
     data_ba.extend(ad_ba)
     data_ba.extend(sd_ba)
+    data_ba.extend(struct.pack("<I", duration))
+    data_ba.extend(chr(own_addr_type).encode('utf-8'))
 
     iutctl.btp_worker.send(*GAP['start_adv'], data=data_ba)
 
@@ -479,10 +481,11 @@ def gap_adv_off(iutctl: IutCtl):
     __gap_current_settings_update(iutctl.stack.gap, tuple_data)
 
 
-def gap_conn(iutctl: IutCtl, bd_addr: BleAddress):
+def gap_conn(iutctl: IutCtl, bd_addr: BleAddress, own_addr_type=OwnAddrType.le_identity_address):
     logging.debug("%s %r", gap_conn.__name__, bd_addr)
 
     data_ba = bytearray(bd_addr)
+    data_ba.append(own_addr_type)
 
     iutctl.btp_worker.send(*GAP['conn'], data=data_ba)
 
@@ -829,11 +832,19 @@ def gap_read_ctrl_info(iutctl: IutCtl):
     __gap_current_settings_update(iutctl.stack.gap, _curr_set)
 
 
-def gap_start_direct_adv(iutctl: IutCtl, addr: BleAddress, high_duty=False):
+def gap_start_direct_adv(iutctl: IutCtl, addr: BleAddress, high_duty=0, peer_rpa=0):
     logging.debug("%s %r %r", gap_start_direct_adv.__name__, addr, high_duty)
 
     data_ba = bytearray(addr)
-    data_ba.extend([int(high_duty)])
+
+    opts = 0
+    if high_duty:
+        opts |= defs.GAP_START_DIRECT_ADV_HD
+
+    if peer_rpa:
+        opts |= defs.GAP_START_DIRECT_ADV_PEER_RPA
+
+    data_ba.extend(struct.pack('H', opts))
 
     iutctl.btp_worker.send(*GAP['start_direct_adv'], data=data_ba)
 
@@ -1306,7 +1317,7 @@ def gatts_dec_attr_value_changed_ev_data(frame):
 def btp2uuid(uuid_len, uu):
     if uuid_len == 2:
         (uu,) = struct.unpack("H", uu)
-        return format(uu, 'x').upper()
+        return format(uu, 'x').upper().zfill(4)
     else:
         return uuid.UUID(bytes=uu[::-1]).urn[9:].replace('-', '').upper()
 
@@ -3012,7 +3023,7 @@ class BTPEventHandler:
         }
 
     def clear_listeners(self):
-        for k, dct in self.listeners.items():
+        for _, dct in self.listeners.items():
             for key, lst in dct.items():
                 if len(lst) > 0:
                     for listener in lst:

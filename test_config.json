@@ -1,0 +1,18 @@
+{
+	"Android": {
+		"skipped_central": {
+			"test_btp_GAP_CONN_DCON_1": "Android has issues with direct connection",
+			"test_btp_GAP_CONN_CPUP_2": "Android does not support connection parameters update",
+			"test_btp_GAP_CONN_PAIR_1": "Android does not support IO capabilities update",
+			"test_btp_GAP_CONN_PAIR_3": "Android does not support IO capabilities update"
+		},
+		"skipped_peripheral": {
+			"test_btp_GAP_CONN_DCON_1": "Android has issues with direct connection",
+			"test_btp_GAP_CONN_CPUP_1": "Android does not support connection parameters update"
+		}
+	},
+	"Mynewt": {
+		"skipped_central": {},
+		"skipped_peripheral": {}
+	}
+}
