@@ -48,16 +48,14 @@ devices and transports should be fairly simple so feel free to submit PRs.
 
 **Configuration:**
 
-To create a connection with a Mynewt device you need:
-
-- a serial port
-- a device serial number
+To create a connection with a Mynewt device you need to specify it in the
+arguments
 
 Example: 
 ```
-mynewt = MynewtCtl('/dev/ttyACM0', '683xxxxxx')
+python3 main.py --use-mynewt
 ```
-    
+
 #### Testing with Android
 
 To test with Android device you should use [BTPTesterAndroid](https://github.com/JuulLabs-OSS/BTPTesterAndroid)
@@ -68,19 +66,42 @@ BTPTesterCore runs a WebSocket client that connects to the Android
 app. When the connection is established, BTP packets can be sent
 in both directions.
 
-The tool supports using multiple Android devices by specifying their
-serial number. That means you can test two Android phones against
-each other.
-    
+The tool supports using multiple Android devices so you can test two
+Android phones against each other.
+
 **Configuration:**
 
-To create a connection with an Android device you need:
+To create a connection with a specific Android device you need:
+
+- a device serial number (you can find it with `adb devices -l`)
+
+If no serial number is given and two Android phones are present, they
+will automatically be assigned.
+
+Examples: 
+```
+python3 main.py --android-central 0123456789
+```
+```
+python3 main.py
+```
+
+#### Testing with Android + Mynewt Nimble
+
+See the setup for both IUTs above.
+
+The tool supports using Android device along Mynewt device so you can
+test them against each other.
+
+**Configuration:**
+
+To create a connection with a specific Android device you need:
 
 - a device serial number (you can find it with `adb devices -l`)
 
 Example: 
 ```
-android = AndroidCtl('xxxxxxxxx')
+python3 main.py --android-central 0123456789 --use-mynewt
 ```
 
 #### Preparing a test run
@@ -136,6 +157,24 @@ All testcases should be named according to the following format:
 test_btp_<PROFILE>_<GROUP>_<FEATURE>_<NUM>
 ```
 
+#### Running a specific test or suite
+
+Tests can be specified as arguments when running the tool.
+If no specific test is passed as argument, all tests present in main.py will run.
+
+The format should be:
+```
+--test <TEST_SUITE>#<TEST>
+```
+
+Examples: 
+```
+python3 main.py --test GattTestCase#test_btp_GATT_CL_GAD_1
+```
+```
+python3 main.py --test GapTestCase
+```
+
 #### Required static GATT Database
 
 The IUT should implement the following static GATT database to pass
@@ -146,7 +185,7 @@ Service
     UUID: 0000001E-8C26-476F-89A7-A108033A69C7
 Service
     UUID: 00000001-8C26-476F-89A7-A108033A69C7
-    Included: 0000001E-8C26-476F-89A7-A108033A69C7
+    Included: 0000001E-0000-1000-8000-00805f9b34fb
 Characteristic
     UUID: 00000006-8C26-476F-89A7-A108033A69C7
     Property: READ | WRITE

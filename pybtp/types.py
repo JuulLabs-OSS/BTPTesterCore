@@ -92,6 +92,9 @@ class AdFlags:
     sim_le_br_edr_contr = 0x08
     sim_le_br_edr_host = 0x10
 
+class AdDuration:
+    forever = 0xFFFFFFFF
+
 
 class UUID:
     primary_svc = '2800'
@@ -151,7 +154,7 @@ class PTS_DB:
     LONG_CHR_READ_WRITE = PTS_UUID_FMT.format('0015')
     LONG_CHR_READ_WRITE_ALT = PTS_UUID_FMT.format('0016')
     LONG_DSC_READ_WRITE = PTS_UUID_FMT.format('001B')
-    INC_SVC = PTS_UUID_FMT.format('001E')
+    INC_SVC = '001E'
     CHR_READ_WRITE_ALT = PTS_UUID_FMT.format('001F')
 
     CHR_NO_PERM_ID = 0
@@ -201,6 +204,11 @@ class IOCap:
 class Addr:
     le_public = 0
     le_random = 1
+
+class OwnAddrType:
+    le_identity_address = 0
+    le_resolvable_private_address = 1
+    le_non_resolvable_private_address = 2
 
 
 class MeshVals:

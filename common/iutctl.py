@@ -18,6 +18,9 @@ from abc import abstractmethod
 
 
 class IutCtl:
+    TYPE_ANDROID = "Android"
+    TYPE_MYNEWT = "Mynewt"
+
     @abstractmethod
     def start(self):
         raise NotImplementedError
@@ -32,6 +35,10 @@ class IutCtl:
 
     @abstractmethod
     def wait_iut_ready_event(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_type(self):
         raise NotImplementedError
 
     @property

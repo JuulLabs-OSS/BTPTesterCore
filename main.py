@@ -31,7 +31,7 @@ def main():
     parser.add_argument('--test', type=str, action='append',
                         help='Specific test to run. Can be class or ' \
                              '[class]#[test] e.g. GattTestCase#test_btp_GATT_CL_GAR_4')
-    parser.add_argument('--use-Mynewt', action='store_true',
+    parser.add_argument('--use-mynewt', action='store_true',
                         help='Will use Mynewt as Central and Peripheral devices. ' \
                              'If an --android device is specified, it will use both')
     parser.add_argument('--android-central', type=str,
@@ -44,7 +44,7 @@ def main():
                         help='Run the tests again after completion until one test fails')
     parser.add_argument('--fail-fast', action='store_true',
                         help='Stops the run at first failure')
-    _ = parser.parse_args()
+    args = parser.parse_args()
 
     format = ("%(asctime)s %(levelname)s %(threadName)-20s "
               "%(filename)-25s %(lineno)-5s %(funcName)-25s : %(message)s")
@@ -55,56 +55,56 @@ def main():
     logger.setLevel(logging.ERROR)
     logger.addHandler(logging.StreamHandler())
 
-    if _.use_nordic and _.android_central is None and _.android_peripheral is None:
+    if args.use_mynewt and args.android_central is None and args.android_peripheral is None:
         central = MynewtCtl(NordicBoard())
         peripheral = MynewtCtl(NordicBoard())
-    elif _.use_nordic:
-        if _.android_central is not None:
-            central = AndroidCtl(_.android_central)
+    elif args.use_mynewt:
+        if args.android_central is not None:
+            central = AndroidCtl(args.android_central)
             peripheral = MynewtCtl(NordicBoard())
         else:
             central = MynewtCtl(NordicBoard())
-            peripheral = AndroidCtl(_.android_peripheral)
+            peripheral = AndroidCtl(args.android_peripheral)
     else:
-        central, peripheral = AndroidCtl.from_serials_or_auto(_.android_central,
-                                                              _.android_peripheral)
+        central, peripheral = AndroidCtl.from_serials_or_auto(args.android_central,
+                                                              args.android_peripheral)
 
     def create_suite():
         suite = unittest.TestSuite()
-        if _.test is not None:
-            for arg in _.test:
+        if args.test is not None:
+            for arg in args.test:
                 test = arg.split('#')
                 if len(test) > 1:
                     suite.addTest(eval(test[0])(test[1],
                                     central, peripheral))
                 else:
                     suite.addTests(eval(test[0]).init_testcases(central, peripheral))
-        if _.test is None:
+        if args.test is None:
             suite.addTests(GapTestCase.init_testcases(central, peripheral))
             suite.addTests(GattTestCase.init_testcases(central, peripheral))
         return suite
 
-    runner = unittest.TextTestRunner(verbosity=2, failfast=_.fail_fast)
+    runner = unittest.TextTestRunner(verbosity=2, failfast=args.fail_fast)
 
     suite = create_suite();
 
     print("Starting tester" \
-          + ", runs: " + ("until failure" if _.rerun_until_failure else str(_.run_count)) \
-          + ", fail-fast: " + str(_.fail_fast))
+          + ", runs: " + ("until failure" if args.rerun_until_failure else str(args.run_count)) \
+          + ", fail-fast: " + str(args.fail_fast))
     print("Central IUT: " + str(central))
     print("Peripheral IUT: " + str(peripheral))
 
     run_count = 0
     run_failed = False
     results = []
-    while run_count < _.run_count or (_.rerun_until_failure and not run_failed):
+    while run_count < args.run_count or (args.rerun_until_failure and not run_failed):
         suite = create_suite();
         print("\n### Starting run " + str(run_count + 1) + "/" \
-              + str(_.run_count) + " with " + str(suite.countTestCases()) + " tests ###\n")
+              + str(args.run_count) + " with " + str(suite.countTestCases()) + " tests ###\n")
         result = runner.run(suite)
         results.append(result)
         run_failed = len(result.errors) + len(result.failures) > 0
-        if _.fail_fast and run_failed:
+        if args.fail_fast and run_failed:
             break
         run_count += 1
         time.sleep(1)

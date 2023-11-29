@@ -55,10 +55,13 @@ def nrf_get_tty_by_sn(sn):
         device, serial = line.decode().rstrip().split(" ")
         serial_devices[device] = serial
 
+    # NRF5340 has two cores, the core app is the last.
+    suitable_devices = []
     for device, serial in serial_devices.items():
         if sn in device:
-            return '/dev/serial/by-id/' + serial
-    return None
+            suitable_devices.append('/dev/serial/by-id/' + serial)
+
+    return suitable_devices[len(suitable_devices) - 1]
 
 
 def list_available_boards():

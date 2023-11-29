@@ -15,6 +15,7 @@
 #
 
 import time
+import sys
 
 from pybtp import btp
 from pybtp.types import PTS_DB, Prop, Perm, UUID
@@ -43,6 +44,8 @@ class GattTestCase(BTPTestCase):
         Services in a GATT server.
         """
 
+        self.verify_skipped(sys._getframe().f_code.co_name)
+
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
         btp.gattc_disc_prim_svcs(self.iut1,
@@ -60,6 +63,8 @@ class GattTestCase(BTPTestCase):
         Verify that a Generic Attribute Profile client can discover Primary
         Services selected by service UUID, using 16-bit and 128-bit UUIDs.
         """
+
+        self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
@@ -79,6 +84,8 @@ class GattTestCase(BTPTestCase):
         Verify that a Generic Attribute Profile client can find include service
         declarations within a specified service definition on a server.
         """
+
+        self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
@@ -108,6 +115,8 @@ class GattTestCase(BTPTestCase):
         Verify that a Generic Attribute Profile client can discover
         characteristic declarations within a specified service definition.
         """
+
+        self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
@@ -143,6 +152,8 @@ class GattTestCase(BTPTestCase):
         characteristic UUIDs.
         """
 
+        self.verify_skipped(sys._getframe().f_code.co_name)
+
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
         btp.gattc_disc_chrc_uuid(self.iut1,
@@ -165,6 +176,8 @@ class GattTestCase(BTPTestCase):
         Verify that a Generic Attribute Profile client can find all Descriptors
         of a specified Characteristic.
         """
+
+        self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
@@ -213,6 +226,8 @@ class GattTestCase(BTPTestCase):
         Characteristic Value selected by handle.
         """
 
+        self.verify_skipped(sys._getframe().f_code.co_name)
+
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
         btp.gattc_disc_chrc_uuid(self.iut1,
@@ -245,6 +260,8 @@ class GattTestCase(BTPTestCase):
         to the client and might be long.
         """
 
+        self.verify_skipped(sys._getframe().f_code.co_name)
+
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
         btp.gattc_disc_chrc_uuid(self.iut1,
@@ -276,6 +293,8 @@ class GattTestCase(BTPTestCase):
         Verify that a Generic Attribute Profile client can read a characteristic
         descriptor selected by handle.
         """
+
+        self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
@@ -334,6 +353,8 @@ class GattTestCase(BTPTestCase):
         is unknown to the client and might be long.
         """
 
+        self.verify_skipped(sys._getframe().f_code.co_name)
+
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
         btp.gattc_disc_prim_uuid(self.iut1,
@@ -390,6 +411,8 @@ class GattTestCase(BTPTestCase):
         a Characteristic Value selected by handle.
         """
 
+        self.verify_skipped(sys._getframe().f_code.co_name)
+
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
         btp.gattc_disc_chrc_uuid(self.iut1,
@@ -429,6 +452,8 @@ class GattTestCase(BTPTestCase):
         Characteristic Value selected by handle.
         """
 
+        self.verify_skipped(sys._getframe().f_code.co_name)
+
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
         btp.gattc_disc_chrc_uuid(self.iut1,
@@ -467,6 +492,8 @@ class GattTestCase(BTPTestCase):
         Verify that a Generic Attribute Profile client can write
         a characteristic descriptor selected by handle.
         """
+
+        self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
@@ -532,6 +559,8 @@ class GattTestCase(BTPTestCase):
         characteristic descriptor selected by handle.
         """
 
+        self.verify_skipped(sys._getframe().f_code.co_name)
+
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
         btp.gattc_disc_prim_uuid(self.iut1,
@@ -596,6 +625,8 @@ class GattTestCase(BTPTestCase):
         a Characteristic Value Notification and report that to the Upper Tester.
         """
 
+        self.verify_skipped(sys._getframe().f_code.co_name)
+
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
         db = GattDB()
@@ -639,6 +670,8 @@ class GattTestCase(BTPTestCase):
         Verify that a Generic Attribute Profile client can receive
         a Characteristic Value Notification and report that to the Upper Tester.
         """
+
+        self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 

@@ -122,9 +122,6 @@ def _adb_set_wake_timeout(sn, timeout):
     subprocess.check_call(_adb_prefix(sn) + cmd, shell=True)
 
 
-
-
-
 class AndroidCtl(IutCtl):
     def __init__(self, serial_num, host=None, port=None):
         log("%s.%s serial_num=%s host=%s port=%s",
@@ -256,6 +253,9 @@ class AndroidCtl(IutCtl):
                     break
 
         return central, peripheral
+
+    def get_type(self):
+        return self.TYPE_ANDROID
 
     def __str__(self):
         return f"AndroidCtl serial: {self.serial_num}, host: {self.host}, port: {self.port}"

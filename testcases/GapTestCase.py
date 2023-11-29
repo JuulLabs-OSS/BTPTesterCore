@@ -15,6 +15,7 @@
 #
 
 import os
+import sys
 
 from pybtp import btp
 from pybtp.types import AdType, IOCap
@@ -46,6 +47,8 @@ class GapTestCase(BTPTestCase):
         The IUT1 is operating in the Peripheral role.
         """
 
+        self.verify_skipped(sys._getframe().f_code.co_name)
+
         btp.gap_set_conn(self.iut2)
         btp.gap_set_gendiscov(self.iut2)
 
@@ -72,6 +75,8 @@ class GapTestCase(BTPTestCase):
         The IUT1 is operating in the Central role.
         """
 
+        self.verify_skipped(sys._getframe().f_code.co_name)
+
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
         disconnection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
@@ -82,6 +87,8 @@ class GapTestCase(BTPTestCase):
 
         The IUT1 is operating in the Peripheral role.
         """
+
+        self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut2, peripheral=self.iut1)
 
@@ -131,6 +138,8 @@ class GapTestCase(BTPTestCase):
         is operating in the Central role and is the responder.
         """
 
+        self.verify_skipped(sys._getframe().f_code.co_name)
+
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
         conn_params = self.iut1.stack.gap.get_conn_params()
@@ -158,9 +167,14 @@ class GapTestCase(BTPTestCase):
                                       conn_itvl_max, latency,
                                       supervision_timeout)
 
-        wait_futures([btp.gap_conn_param_update_ev(self.iut1, verify_iut1),
-                      btp.gap_conn_param_update_ev(self.iut2, verify_iut2)],
-                     timeout=EV_TIMEOUT)
+        # Android can't send gap_conn_param_update_ev as this is private API.
+        # If IUT1 is Android device, don't wait for its callback to unblock Mynewt.
+        futures = []
+        futures.append(btp.gap_conn_param_update_ev(self.iut2, verify_iut2))
+        if self.iut1.get_type() != self.iut1.TYPE_ANDROID:
+            futures.append(btp.gap_conn_param_update_ev(self.iut1, verify_iut1))
+
+        wait_futures(futures, timeout=EV_TIMEOUT)
 
         disconnection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
@@ -174,6 +188,8 @@ class GapTestCase(BTPTestCase):
         the Connection Parameter Update Procedure and the IUT2 is
         operating in the Peripheral role and is the responder.
         """
+
+        self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
@@ -202,9 +218,14 @@ class GapTestCase(BTPTestCase):
                                       conn_itvl_max, latency,
                                       supervision_timeout)
 
-        wait_futures([btp.gap_conn_param_update_ev(self.iut1, verify_iut1),
-                      btp.gap_conn_param_update_ev(self.iut2, verify_iut2)],
-                     timeout=EV_TIMEOUT)
+        # Android can't send gap_conn_param_update_ev as this is private API.
+        # If IUT2 is Android device, don't wait for its callback to unblock Mynewt.
+        futures = []
+        futures.append(btp.gap_conn_param_update_ev(self.iut1, verify_iut1))
+        if self.iut2.get_type() != self.iut2.TYPE_ANDROID:
+            futures.append(btp.gap_conn_param_update_ev(self.iut2, verify_iut2))
+
+        wait_futures(futures, timeout=EV_TIMEOUT)
 
         disconnection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
@@ -217,6 +238,8 @@ class GapTestCase(BTPTestCase):
         performing the pairing procedure; the IUT2
         is operating in the Peripheral role and is the responder.
         """
+
+        self.verify_skipped(sys._getframe().f_code.co_name)
 
         btp.gap_set_io_cap(self.iut2, IOCap.no_input_output)
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
@@ -254,6 +277,8 @@ class GapTestCase(BTPTestCase):
         performing the pairing procedure; the IUT2
         is operating in the Peripheral role and is the responder.
         """
+
+        self.verify_skipped(sys._getframe().f_code.co_name)
 
         btp.gap_set_io_cap(self.iut1, IOCap.display_yesno)
         btp.gap_set_io_cap(self.iut2, IOCap.display_yesno)
@@ -304,6 +329,8 @@ class GapTestCase(BTPTestCase):
         performing the pairing procedure; the IUT2
         is operating in the Peripheral role and is the responder.
         """
+
+        self.verify_skipped(sys._getframe().f_code.co_name)
 
         btp.gap_set_io_cap(self.iut1, IOCap.keyboard_only)
         btp.gap_set_io_cap(self.iut2, IOCap.display_only)
