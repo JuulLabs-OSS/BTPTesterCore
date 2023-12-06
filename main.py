@@ -16,10 +16,12 @@
 import argparse
 import logging
 import unittest
+import signal
 import sys
 import time
 
 from common.board import NordicBoard
+from common.iutctl import IutCtl
 from projects.android.iutctl import AndroidCtl
 from projects.mynewt.iutctl import MynewtCtl
 from testcases.GattTestCase import GattTestCase
@@ -31,13 +33,21 @@ def main():
     parser.add_argument('--test', type=str, action='append',
                         help='Specific test to run. Can be class or ' \
                              '[class]#[test] e.g. GattTestCase#test_btp_GATT_CL_GAR_4')
-    parser.add_argument('--use-mynewt', action='store_true',
-                        help='Will use Mynewt as Central and Peripheral devices. ' \
-                             'If an --android device is specified, it will use both')
-    parser.add_argument('--android-central', type=str,
-                        help='Central Android device serial number')
-    parser.add_argument('--android-peripheral', type=str,
-                        help='Peripheral Android device serial number')
+
+    parser.add_argument('--central', type=str, nargs=2, \
+                        metavar=('OS', 'serial number'), required=True, \
+                        help='OS and serial number for central IUT')
+    parser.add_argument('--peripheral', type=str, nargs=2, \
+                        metavar=('OS', 'serial number'), required=True, \
+                        help='OS and serial number for peripheral IUT')
+
+    parser.add_argument('--flash-central', type=str, nargs=2, \
+                        metavar=('board name', 'project path'), \
+                        help='Build the OS specified in --central and flash the board')
+    parser.add_argument('--flash-peripheral', type=str, nargs=2, \
+                        metavar=('board name', 'project path'), \
+                        help='Build the OS specified in --peripheral and flash the board')
+
     parser.add_argument('--run-count', type=int, default=1,
                         help='Run the tests again after completion')
     parser.add_argument('--rerun-until-failure', action='store_true',
@@ -55,19 +65,29 @@ def main():
     logger.setLevel(logging.ERROR)
     logger.addHandler(logging.StreamHandler())
 
-    if args.use_mynewt and args.android_central is None and args.android_peripheral is None:
-        central = MynewtCtl(NordicBoard())
-        peripheral = MynewtCtl(NordicBoard())
-    elif args.use_mynewt:
-        if args.android_central is not None:
-            central = AndroidCtl(args.android_central)
-            peripheral = MynewtCtl(NordicBoard())
-        else:
-            central = MynewtCtl(NordicBoard())
-            peripheral = AndroidCtl(args.android_peripheral)
+    central_os, central_sn = args.central
+    peripheral_os, peripheral_sn = args.peripheral
+
+    if central_os == IutCtl.TYPE_MYNEWT:
+        central = MynewtCtl(NordicBoard(central_sn))
+    elif central_os == IutCtl.TYPE_ANDROID:
+        central = AndroidCtl(central_sn)
     else:
-        central, peripheral = AndroidCtl.from_serials_or_auto(args.android_central,
-                                                              args.android_peripheral)
+        raise ValueError("Central OS is not implemented.")
+
+    if peripheral_os == IutCtl.TYPE_MYNEWT:
+        peripheral = MynewtCtl(NordicBoard(peripheral_sn))
+    elif peripheral_os == IutCtl.TYPE_ANDROID:
+        peripheral = AndroidCtl(peripheral_sn)
+    else:
+        raise ValueError("Peripheral OS is not implemented.")
+
+    if args.flash_central is not None:
+        board_name, project_path = args.flash_central
+        central.build_and_flash(board_name, project_path)
+    if args.flash_peripheral is not None:
+        board_name, project_path = args.flash_peripheral
+        peripheral.build_and_flash(board_name, project_path)
 
     def create_suite():
         suite = unittest.TestSuite()
@@ -110,4 +130,28 @@ def main():
         time.sleep(1)
 
 if __name__ == "__main__":
-    main()
+    def sigint_handler(sig, frame):
+        """Thread safe SIGINT interrupting"""
+        set_global_end()
+
+        if sys.platform != "win32":
+            signal.signal(signal.SIGINT, prev_sigint_handler)
+            threading.Thread(target=signal.raise_signal(signal.SIGINT)).start()
+
+    try:
+        prev_sigint_handler = signal.getsignal(signal.SIGINT)
+        signal.signal(signal.SIGINT, sigint_handler)
+
+        rc = main()
+    except KeyboardInterrupt:  # Ctrl-C
+        rc = 14
+    except SystemExit:
+        raise
+    except BaseException as e:
+        logging.exception(e)
+        import traceback
+
+        traceback.print_exc()
+        rc = 16
+    finally:
+        sys.exit(rc)
