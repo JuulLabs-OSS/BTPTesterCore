@@ -30,6 +30,7 @@ from pybtp.btp_socket import BTPSocket
 from pybtp.btp_worker import BTPWorker
 from stack.stack import Stack
 from pybtp.types import BTPError
+from projects.mynewt.boards import get_build_and_flash
 
 log = logging.debug
 
@@ -68,6 +69,15 @@ class MynewtCtl(IutCtl):
     @property
     def stack(self):
         return self._stack
+
+    def build_and_flash(self, board_name, project_path):
+        print("mynewt build and flash for " + board_name + " " + project_path)
+        overlay = {}
+        build_and_flash = get_build_and_flash(board_name)
+        try:
+            build_and_flash(project_path, board_name, overlay, self.board.sn)
+        except:
+            raise
 
     def flush_serial(self):
         log("%s.%s", self.__class__, self.flush_serial.__name__)

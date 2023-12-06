@@ -18,8 +18,12 @@ from abc import abstractmethod
 
 
 class IutCtl:
-    TYPE_ANDROID = "Android"
-    TYPE_MYNEWT = "Mynewt"
+    TYPE_ANDROID = "android"
+    TYPE_MYNEWT = "mynewt"
+
+    @abstractmethod
+    def build_and_flash(self, board_name, project_path):
+        raise NotImplementedError
 
     @abstractmethod
     def start(self):
