@@ -18,6 +18,7 @@ import logging
 import unittest
 import signal
 import sys
+import threading
 import time
 
 from common.board import NordicBoard
@@ -48,12 +49,16 @@ def main():
                         metavar=('board name', 'project path'), \
                         help='Build the OS specified in --peripheral and flash the board')
 
+    parser.add_argument('--rerun-reverse', action='store_true',
+                        help='After completion, switch roles and rerun the tests')
+
     parser.add_argument('--run-count', type=int, default=1,
                         help='Run the tests again after completion')
     parser.add_argument('--rerun-until-failure', action='store_true',
                         help='Run the tests again after completion until one test fails')
     parser.add_argument('--fail-fast', action='store_true',
                         help='Stops the run at first failure')
+
     args = parser.parse_args()
 
     format = ("%(asctime)s %(levelname)s %(threadName)-20s "
@@ -89,51 +94,62 @@ def main():
         board_name, project_path = args.flash_peripheral
         peripheral.build_and_flash(board_name, project_path)
 
-    def create_suite():
+    def create_suite(iut1, iut2):
         suite = unittest.TestSuite()
         if args.test is not None:
             for arg in args.test:
                 test = arg.split('#')
                 if len(test) > 1:
                     suite.addTest(eval(test[0])(test[1],
-                                    central, peripheral))
+                                    iut1, iut2))
                 else:
-                    suite.addTests(eval(test[0]).init_testcases(central, peripheral))
+                    suite.addTests(eval(test[0]).init_testcases(iut1, iut2))
         if args.test is None:
-            suite.addTests(GapTestCase.init_testcases(central, peripheral))
-            suite.addTests(GattTestCase.init_testcases(central, peripheral))
+            suite.addTests(GapTestCase.init_testcases(iut1, iut2))
+            suite.addTests(GattTestCase.init_testcases(iut1, iut2))
         return suite
+
+    def run_test(suite):
+        result = runner.run(suite)
+        failed = len(result.errors) + len(result.failures) > 0
+        time.sleep(1)
+        return failed
 
     runner = unittest.TextTestRunner(verbosity=2, failfast=args.fail_fast)
 
-    suite = create_suite();
-
     print("Starting tester" \
           + ", runs: " + ("until failure" if args.rerun_until_failure else str(args.run_count)) \
-          + ", fail-fast: " + str(args.fail_fast))
+          + ", fail-fast: " + str(args.fail_fast) \
+          + ", rerun-reverse: " + str(args.rerun_reverse))
     print("Central IUT: " + str(central))
     print("Peripheral IUT: " + str(peripheral))
 
     run_count = 0
     run_failed = False
-    results = []
     while run_count < args.run_count or (args.rerun_until_failure and not run_failed):
-        suite = create_suite();
+        suite = create_suite(central, peripheral)
         print("\n### Starting run " + str(run_count + 1) + "/" \
               + str(args.run_count) + " with " + str(suite.countTestCases()) + " tests ###\n")
-        result = runner.run(suite)
-        results.append(result)
-        run_failed = len(result.errors) + len(result.failures) > 0
-        if args.fail_fast and run_failed:
+        fail = run_test(suite)
+        if args.fail_fast and fail:
             break
+
+        if args.rerun_reverse:
+            suite = create_suite(peripheral, central)
+            print("\n### Starting reverse run " + str(run_count + 1) + "/" \
+              + str(args.run_count) + " with " + str(suite.countTestCases()) + " tests ###\n")
+            rerun_fail = run_test(suite)
+            if args.fail_fast and rerun_fail:
+                break
+
+        run_failed = fail or rerun_fail
         run_count += 1
         time.sleep(1)
+
 
 if __name__ == "__main__":
     def sigint_handler(sig, frame):
         """Thread safe SIGINT interrupting"""
-        set_global_end()
-
         if sys.platform != "win32":
             signal.signal(signal.SIGINT, prev_sigint_handler)
             threading.Thread(target=signal.raise_signal(signal.SIGINT)).start()

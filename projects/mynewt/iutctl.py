@@ -71,7 +71,6 @@ class MynewtCtl(IutCtl):
         return self._stack
 
     def build_and_flash(self, board_name, project_path):
-        print("mynewt build and flash for " + board_name + " " + project_path)
         overlay = {}
         build_and_flash = get_build_and_flash(board_name)
         try:

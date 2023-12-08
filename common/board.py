@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 import logging
 import shlex
 import subprocess
@@ -61,6 +62,8 @@ def nrf_get_tty_by_sn(sn):
         if sn in device:
             suitable_devices.append('/dev/serial/by-id/' + serial)
 
+    if len(suitable_devices) == 0:
+        raise ValueError("No available device for serial number " + sn)
     return suitable_devices[len(suitable_devices) - 1]
 
 

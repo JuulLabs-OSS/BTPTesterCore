@@ -48,12 +48,11 @@ devices and transports should be fairly simple so feel free to submit PRs.
 
 **Configuration:**
 
-To create a connection with a Mynewt device you need to specify it in the
-arguments
+To get the serial number, use `nrfjprog -i`
 
-Example: 
+Example BTPTester run:
 ```
-python3 main.py --use-mynewt
+python3 btptester.py --central mynewt 1050069955 --peripheral mynewt 1050069956
 ```
 
 #### Testing with Android
@@ -71,83 +70,30 @@ Android phones against each other.
 
 **Configuration:**
 
-To create a connection with a specific Android device you need:
+To get the serial number, use `adb devices -l`
 
-- a device serial number (you can find it with `adb devices -l`)
-
-If no serial number is given and two Android phones are present, they
-will automatically be assigned.
-
-Examples: 
+Example:
 ```
-python3 main.py --android-central 0123456789
-```
-```
-python3 main.py
+python3 btptester.py --central android 13161JEC203758 --peripheral android 14161JEC203758
 ```
 
-#### Testing with Android + Mynewt Nimble
+#### Adding new tests
 
-See the setup for both IUTs above.
+BTPTesterCore uses Python's unittest framework to run tests.
 
-The tool supports using Android device along Mynewt device so you can
-test them against each other.
+You can add new tests either by adding them to existing test classes
+like in `GapTestCase.py`, or creating a new profile class.
 
-**Configuration:**
+If you create a new test class, you'll need to add it to `btptester.py`
+in the `create_suite` function so that a default run takes it.
 
-To create a connection with a specific Android device you need:
-
-- a device serial number (you can find it with `adb devices -l`)
-
-Example: 
-```
-python3 main.py --android-central 0123456789 --use-mynewt
-```
-
-#### Preparing a test run
-
-In the current version of this tool preparing a test run is very simple.
-Everything can be configured inside `main.py` file.
-
-Firstly, configure and create objects representing connections to your
-IUTs as described above. Then prepare a test suite. BTPTesterCore
-uses Python's unittest framework to run tests. First create a
-`unittest.TestSuite() object like so:
+Example:
 
 ```
-suite = unittest.TestSuite()
+suite.addTests(GapTestCase.init_testcases(iut1, iut2))
+suite.addTests(GattTestCase.init_testcases(iut1, iut2))
+suite.addTests(ProfileTestCase.init_testcases(iut1, iut2))
 ```
-
-Then you can start adding testcases by specifying a testcase name
-explicitly:
-
-```
-suite.addTest(GapTestCase('test_btp_GAP_CONN_DCON_1', mynewt, android))
-```
-
-or by using a helper function that returns all testcases inside a file:
-
-```
-suite.addTests(GapTestCase.init_testcases(mynewt, android))
-suite.addTests(GattTestCase.init_testcases(mynewt, android))
-```
-
-Please note that when adding testcases we initialize each testcase
-object by passing IUTs as the parameters.
-
-Lastly, create a test runner and run the test suite:
-
-```
-runner = unittest.TextTestRunner(verbosity=2)
-runner.run(suite())
-```
-
-A working example can be found in `main.py` file. It can be run also from test.sh script.
-Running `main.py` from `test.sh` will generate two `.log` files: `logger_traces.log` with
-history of run functions and their outputs and `test.log` with reports of executed tests.
-If running test from shell script, user can define time when  tests will be run. At accepts
-many time formats,  i.e. date in format 2020-04-30, time in form 09:20 or 0920 and 
-now + n minute, hour, day.
 
 #### Testcase naming convention
 
@@ -160,19 +106,85 @@ test_btp_<PROFILE>_<GROUP>_<FEATURE>_<NUM>
 #### Running a specific test or suite
 
 Tests can be specified as arguments when running the tool.
-If no specific test is passed as argument, all tests present in main.py will run.
+If no specific test is passed as argument, all tests present
+in `btptester.py` will run.
 
 The format should be:
 ```
 --test <TEST_SUITE>#<TEST>
 ```
 
-Examples: 
+Examples:
 ```
-python3 main.py --test GattTestCase#test_btp_GATT_CL_GAD_1
+python3 btptester.py --central mynewt 1050069955 --peripheral android 13161JEC203758 --test GattTestCase#test_btp_GATT_CL_GAD_1
 ```
 ```
-python3 main.py --test GapTestCase
+python3 btptester.py --central mynewt 1050069955 --peripheral android 13161JEC203758 --test GattTestCase
+```
+
+#### Other run options
+
+##### `--rerun-reverse`
+
+Specifying this will make the tests rerun and reverse central and peripheral IUTs.
+
+##### `--run-count x`
+
+Reruns x times.
+
+##### `--rerun-until-failure`
+
+Run the tests again after completion until one test fails.
+
+##### `--fail-fast`
+
+Stops the run at first failure.
+
+#### Automation
+
+You can use `btptester_cron.py` to start the cron script provided with this tool.
+The cron script is able to run both scheduled jobs and pull requests jobs, using
+a magic tag.
+
+Detailled information about configuration can be found [here](cron/README.md).
+
+##### Scheduled jobs
+
+As long as the script is running, it will run configured scheduled jobs.
+
+##### Pull requests jobs
+
+As long as the script is running it will fetch comments from pull requests on
+configured repos and if a magic tag is found, update the repo, fetch the pull
+request, build and flash IUTs, then run BTPTester.
+
+Example of magic tag: `#BTPTester run`
+
+The `against=` argument can be added on the comment to specify which OS the
+tester should take as second device (first device is of the specified OS in config).
+**If not specified, the tester will choose the same OS as the firs one.**
+
+Once the tests results are available, the script will post a comment on the
+pull request.
+
+Example of pull request magic tag comment:
+```
+#BTPTester run against=android
+```
+
+Example:
+```
+python3 btptester_cron.py cron/config.py
+```
+
+##### List available devices
+
+You can get the list of configured OS directly from the pull request comments,
+by using the magic tag `#BTPTester devices`.
+
+Example of pull request magic tag comment:
+```
+#BTPTester devices
 ```
 
 #### Required static GATT Database

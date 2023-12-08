@@ -1,0 +1,86 @@
+# Copyright (c) 2023, Codecoup.
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms and conditions of the GNU General Public License,
+# version 2, as published by the Free Software Foundation.
+#
+# This program is distributed in the hope it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+
+auto_cfg = {}
+
+# ****************************************************************************
+# IUTs configuration
+#
+# device_name: corresponds to a projects/boards name if flash needed
+# os_name: corresponds to a project/os name
+# ****************************************************************************
+auto_cfg['iuts'] = [
+    {
+        'name': 'nordic_pca10095',
+        'serial': '1050069955',
+        'supported_os': [
+            'mynewt'
+        ]
+    },
+    {
+        'name': 'pixel',
+        'serial': '13161JEC203758',
+        'supported_os': [
+            'android'
+        ]
+    },
+    {
+        'name': 'nordic_pca10056',
+        'serial': '1050069988',
+        'supported_os': [
+            'mynewt'
+        ]
+    }
+]
+
+
+# ****************************************************************************
+# Test options
+# ****************************************************************************
+auto_cfg['test_options'] = {
+    "tests": [
+        'GapTestCase#test_btp_GAP_CONN_CPUP_2',
+        'GattTestCase',
+    ]
+}
+
+
+# ****************************************************************************
+# Git repositories configuration
+#
+# project_path: absolute path to repository.
+# git: git subdirectories, key should correspond to repo name, path should
+#      correspond to local path in project_path.
+# ****************************************************************************
+auto_cfg['mynewt'] = {
+    'project_path': 'absolute/mynewt/directory/path',
+    'git': {
+        'mynewt-core': {
+            'path': 'repos/apache-mynewt-core',
+            'remote': 'origin',
+            'branch': 'master',
+            'stash_changes': False
+        },
+        'mynewt-nimble': {
+            'path': 'repos/apache-mynewt-nimble',
+            'remote': 'origin',
+            'branch': 'master',
+            'stash_changes': False
+        },
+        'mcuboot': {
+            'path': 'repos/mcuboot',
+            'remote': 'origin',
+            'branch': 'main',
+            'stash_changes': False
+        },
+    }
+}
