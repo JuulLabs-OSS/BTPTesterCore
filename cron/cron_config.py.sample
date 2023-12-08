@@ -1,0 +1,87 @@
+# Copyright (c) 2023, Codecoup.
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms and conditions of the GNU General Public License,
+# version 2, as published by the Free Software Foundation.
+#
+# This program is distributed in the hope it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+
+from argparse import Namespace
+from datetime import timedelta, datetime
+from cron.common import generic_test_job, generic_pr_job, set_cron_cfg, list_available_devices
+from cron.github_cron import GitHubCron
+
+# ****************************************************************************
+# Email configuration to receive cron script exceptions
+# ****************************************************************************
+email = {  # Admin emails that will receive python exceptions and logs
+    "sender": "johndoe@example.com",
+    "smtp_host": 'smtp.host.net',
+    "smtp_port": 587,
+    "name": "John",
+    "passwd": "XXXXX",
+    "start_tls": False,
+    "recipients": [
+        "janedoe@example.com",
+    ],
+}
+
+set_cron_cfg({'email': email})
+
+# ****************************************************************************
+# Pull requests magic tags
+#
+# func: method to execute when magic word is found.
+# pr_repo_name_in_config: one of IutCtl's types, should also match cfg's git
+#                         and path configuration.
+# cfg: local path to BTPTester automation configuration.
+# ****************************************************************************
+mynewt_nimble_magic_tags = {
+    '#BTPTester run': Namespace(func=generic_pr_job, pr_repo_name_in_config="mynewt", cfg='cron/config'),
+    '#BTPTester devices': Namespace(func=list_available_devices, cfg='cron/sample_config'),
+}
+
+mynewt_core_magic_tags = {
+    '#BTPTester run': Namespace(func=generic_pr_job, pr_repo_name_in_config="mynewt", cfg='cron/config'),
+    '#BTPTester devices': Namespace(func=list_available_devices, cfg='cron/sample_config'),
+}
+
+# ****************************************************************************
+# Pull request jobs declaration
+#
+# interval: interval between pull request comments fetchs.
+# ****************************************************************************
+# Users with privileges to fire the bot with magic sentence
+privileged_users = ['github_user']
+
+github_crons = [
+    GitHubCron(interval=60, magic_tags=mynewt_nimble_magic_tags,
+               repo_owner='apache', repo_name='mynewt-nimble',
+               permitted_logins=privileged_users,
+               access_token=access_token='xxxxxxxxxxxxxxxx'),
+    GitHubCron(interval=60, magic_tags=mynewt_core_magic_tags,
+               repo_owner='apache', repo_name='mynewt-core',
+               permitted_logins=privileged_users,
+               access_token=access_token='xxxxxxxxxxxxxxxx'),
+]
+
+# ****************************************************************************
+# Cyclical jobs declaration
+#
+# func: method to execute by scheduler.
+# cfg: local path to BTPTester automation configuration.
+# os: one of IutCtl's types.
+# against: one of IutCtl's types.
+#
+# Note: if os and against are different, the tester will run with
+#       --rerun-reverse argument.
+# ****************************************************************************
+run_now = (datetime.now() + timedelta(seconds=10)).strftime('%H:%M:%S')
+cyclical_jobs = [
+    Namespace(func=generic_test_job, cfg='cron/config',
+              day='friday', hour=run_now, os="mynewt", against='android'),
+]
