@@ -17,6 +17,7 @@
 import logging
 import shlex
 import subprocess
+import re
 
 log = logging.debug
 
@@ -53,18 +54,21 @@ def nrf_get_tty_by_sn(sn):
                            shell=True)
     end_of_pipe = awk.stdout
     for line in end_of_pipe:
-        device, serial = line.decode().rstrip().split(" ")
-        serial_devices[device] = serial
+        line = line.decode()
+        _, path = line.rstrip().split(" ")
+        if not 'usb-SEGGER_J-Link' in line:
+            continue
+        serial_num = re.match(".*?J-Link_(.*)-.*", line).group(1)
+        port_number = re.match(".*?if([0-9]{2})", line).group(1)
+        if port_number != "00":
+            continue
+        serial_devices[serial_num] = path
 
-    # NRF5340 has two cores, the core app is the last.
-    suitable_devices = []
     for device, serial in serial_devices.items():
         if sn in device:
-            suitable_devices.append('/dev/serial/by-id/' + serial)
+            return '/dev/serial/by-id/' + serial
 
-    if len(suitable_devices) == 0:
-        raise ValueError("No available device for serial number " + sn)
-    return suitable_devices[len(suitable_devices) - 1]
+    raise ValueError("No available device for serial number " + sn)
 
 
 def list_available_boards():
