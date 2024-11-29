@@ -27,11 +27,16 @@ EV_TIMEOUT = 20
 
 
 def preconditions(iutctl):
+    # TODO: find better way to initialize stack objetcs and
+    #  svcs initialization
     btp.core_reg_svc_gap(iutctl)
     btp.core_reg_svc_gatt(iutctl)
     iutctl.stack.gap_init()
     iutctl.stack.gatt_init()
     btp.gap_read_ctrl_info(iutctl)
+    if iutctl.id == 0:
+        btp.core_reg_svc_gatt_cl(iutctl)
+        iutctl.stack.gatt_cl_init()
 
 
 def find_adv_by_addr(args, addr: BleAddress):
