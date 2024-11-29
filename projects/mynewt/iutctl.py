@@ -41,7 +41,7 @@ BTP_ADDRESS = "/tmp/bt-stack-tester"
 class MynewtCtl(IutCtl):
     """Mynewt OS Control Class"""
 
-    def __init__(self, board: Board):
+    def __init__(self, board: Board, gdb=None):
         log("%s.%s board=%r", self.__class__,
             self.__init__.__name__, board)
 
@@ -51,6 +51,7 @@ class MynewtCtl(IutCtl):
         self._socat_process = None
         self._btp_socket = None
         self._btp_worker = None
+        self.gdb = gdb
 
         self.log_filename = "iut-mynewt-{}.log".format(self.id)
         self.log_file = open(self.log_filename, "w")
@@ -125,20 +126,22 @@ class MynewtCtl(IutCtl):
         if not self.board:
             return
 
-        self.board.reset(self.log_file)
+        if not self.gdb:
+            self.board.reset(self.log_file)
 
     def wait_iut_ready_event(self):
         """Wait until IUT sends ready event after power up"""
         self.reset()
 
-        tuple_hdr, tuple_data = self._btp_worker.read()
-        if (tuple_hdr.svc_id != defs.BTP_SERVICE_ID_CORE or
-                tuple_hdr.op != defs.CORE_EV_IUT_READY):
-            err = BTPError("Failed to get ready event")
-            log("Unexpected event received (%s), expected IUT ready!", err)
-            raise err
-        else:
-            log("IUT ready event received OK")
+        if not self.gdb:
+            tuple_hdr, tuple_data = self._btp_worker.read()
+            if (tuple_hdr.svc_id != defs.BTP_SERVICE_ID_CORE or
+                    tuple_hdr.op != defs.CORE_EV_IUT_READY):
+                err = BTPError("Failed to get ready event")
+                log("Unexpected event received (%s), expected IUT ready!", err)
+                raise err
+            else:
+                log("IUT ready event received OK")
 
     def stop(self):
         """Stop IUT related processes"""

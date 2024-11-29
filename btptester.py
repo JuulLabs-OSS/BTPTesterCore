@@ -57,7 +57,10 @@ def main():
     parser.add_argument('--rerun-until-failure', action='store_true',
                         help='Run the tests again after completion until one test fails')
     parser.add_argument('--fail-fast', action='store_true',
-                        help='Stops the run at first failure')
+                        help='Stops the run at first failure'),
+    parser.add_argument('--gdb', type=str,
+                        help="Skip selected board reset to avoid gdb server"
+                             " disconnection e.g. --gdb cent/prph/both")
 
     args = parser.parse_args()
 
@@ -73,15 +76,27 @@ def main():
     central_os, central_sn = args.central
     peripheral_os, peripheral_sn = args.peripheral
 
+    gdb_cent = False
+    gdb_prph = False
+
+    if args.gdb is not None:
+        if args.gdb == 'both':
+            gdb_cent = True
+            gdb_prph = True
+        elif args.gdb == 'prph':
+            gdb_prph = True
+        else:
+            gdb_cent = True
+
     if central_os == IutCtl.TYPE_MYNEWT:
-        central = MynewtCtl(NordicBoard(central_sn))
+        central = MynewtCtl(NordicBoard(central_sn), gdb_cent)
     elif central_os == IutCtl.TYPE_ANDROID:
         central = AndroidCtl(central_sn)
     else:
         raise ValueError("Central OS is not implemented.")
 
     if peripheral_os == IutCtl.TYPE_MYNEWT:
-        peripheral = MynewtCtl(NordicBoard(peripheral_sn))
+        peripheral = MynewtCtl(NordicBoard(peripheral_sn), gdb_prph)
     elif peripheral_os == IutCtl.TYPE_ANDROID:
         peripheral = AndroidCtl(peripheral_sn)
     else:
