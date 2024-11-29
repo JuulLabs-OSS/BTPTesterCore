@@ -66,6 +66,9 @@ def load_config(cfg):
 
     return mod.auto_cfg
 
+class RunEnd(KeyboardInterrupt):
+    pass
+
 
 def set_global_end():
     global GLOBAL_END
@@ -74,3 +77,8 @@ def set_global_end():
 
 def get_global_end():
     return GLOBAL_END
+
+
+def raise_on_global_end():
+    if GLOBAL_END:
+        raise RunEnd
