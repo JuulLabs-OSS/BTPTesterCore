@@ -25,11 +25,12 @@ from concurrent.futures.thread import ThreadPoolExecutor
 
 from common.iutctl import IutCtl
 from pybtp import defs
+from pybtp.types import addr2btp_ba
 from stack.gap import LeAdv, BleAddress, ConnParams
 from stack.gatt import GattDB, GattPrimary, GattSecondary, GattCharacteristic, \
     GattServiceIncluded, GattCharacteristicDescriptor, GattValue
 from .types import BTPError, gap_settings_btp2txt, Addr, OwnAddrType, AdDuration, UUID, AdType, \
-    BTPErrorInvalidServiceID, BTPErrorInvalidStatus, BTPErrorInvalidOpcode
+    BTPErrorInvalidServiceID, BTPErrorInvalidStatus, BTPErrorInvalidOpcode, Perm
 
 CONTROLLER_INDEX = 0
 
@@ -50,6 +51,10 @@ CORE = {
                  defs.BTP_INDEX_NONE, defs.BTP_SERVICE_ID_MESH),
     "mesh_unreg": (defs.BTP_SERVICE_ID_CORE, defs.CORE_UNREGISTER_SERVICE,
                    defs.BTP_INDEX_NONE, defs.BTP_SERVICE_ID_MESH),
+    "gatt_cl_reg": (defs.BTP_SERVICE_ID_CORE, defs.CORE_REGISTER_SERVICE,
+                    defs.BTP_INDEX_NONE, defs.BTP_SERVICE_ID_GATTC),
+    "gatt_cl_unreg": (defs.BTP_SERVICE_ID_CORE, defs.CORE_UNREGISTER_SERVICE,
+                      defs.BTP_INDEX_NONE, defs.BTP_SERVICE_ID_GATTC),
     "read_supp_cmds": (defs.BTP_SERVICE_ID_CORE,
                        defs.CORE_READ_SUPPORTED_COMMANDS,
                        defs.BTP_INDEX_NONE, ""),
@@ -163,6 +168,33 @@ GATTC = {
                      CONTROLLER_INDEX),
 }
 
+GATT_CL = {
+    "disc_prim_svcs": (defs.BTP_SERVICE_ID_GATTC, defs.GATTC_DISC_ALL_PRIM,
+                       CONTROLLER_INDEX),
+    "disc_prim_uuid": (defs.BTP_SERVICE_ID_GATTC, defs.GATTC_DISC_PRIM_UUID,
+                       CONTROLLER_INDEX),
+    "find_included": (defs.BTP_SERVICE_ID_GATTC, defs.GATTC_FIND_INCLUDED,
+                       CONTROLLER_INDEX),
+    "disc_all_chrc": (defs.BTP_SERVICE_ID_GATTC, defs.GATTC_DISC_ALL_CHRC,
+                       CONTROLLER_INDEX),
+    "disc_chrc_uuid": (defs.BTP_SERVICE_ID_GATTC, defs.GATTC_DISC_CHRC_UUID,
+                       CONTROLLER_INDEX),
+    "disc_all_desc": (defs.BTP_SERVICE_ID_GATTC, defs.GATTC_DISC_ALL_DESC,
+                       CONTROLLER_INDEX),
+    "read": (defs.BTP_SERVICE_ID_GATTC, defs.GATTC_READ,
+                       CONTROLLER_INDEX),
+    "read_long": (defs.BTP_SERVICE_ID_GATTC, defs.GATTC_READ_LONG,
+                       CONTROLLER_INDEX),
+    "write": (defs.BTP_SERVICE_ID_GATTC, defs.GATTC_WRITE,
+                       CONTROLLER_INDEX),
+    "write_long": (defs.BTP_SERVICE_ID_GATTC, defs.GATTC_WRITE_LONG,
+                       CONTROLLER_INDEX),
+    "cfg_notify": (defs.BTP_SERVICE_ID_GATTC, defs.GATTC_CFG_NOTIFY,
+                       CONTROLLER_INDEX),
+    "cfg_indicate": (defs.BTP_SERVICE_ID_GATTC, defs.GATTC_CFG_INDICATE,
+                       CONTROLLER_INDEX),
+}
+
 L2CAP = {
     "read_supp_cmds": (defs.BTP_SERVICE_ID_L2CAP,
                        defs.L2CAP_READ_SUPPORTED_COMMANDS,
@@ -238,6 +270,18 @@ MESH = {
 }
 
 
+def clear_verify_values(stack):
+    stack.gatt_cl.verify_values = []
+
+
+def add_to_verify_values(stack, item):
+    stack.gatt_cl.verify_values.append(item)
+
+
+def get_verify_values(stack):
+    return stack.gatt_cl.verify_values
+
+
 def btp_hdr_check(rcv_hdr, exp_svc_id, exp_op=None):
     if rcv_hdr.svc_id != exp_svc_id:
         raise BTPErrorInvalidServiceID("Incorrect service ID %s in the response, expected %s!"
@@ -308,6 +352,20 @@ def core_unreg_svc_mesh(iutctl: IutCtl):
     logging.debug("%s", core_unreg_svc_mesh.__name__)
 
     iutctl.btp_worker.send_wait_rsp(*CORE['mesh_unreg'])
+
+
+def core_reg_svc_gatt_cl(iutctl: IutCtl):
+    logging.debug("%s", core_reg_svc_gatt_cl.__name__)
+
+    iutctl.btp_worker.send(*CORE['gatt_cl_reg'])
+
+    core_reg_svc_rsp_succ(iutctl)
+
+
+def core_unreg_svc_gatt_cl(iutctl: IutCtl):
+    logging.debug("%s", core_unreg_svc_gatt_cl.__name__)
+
+    iutctl.btp_worker.send_wait_rsp(*CORE['gatt_cl_unreg'])
 
 
 def core_reg_svc_rsp_succ(iutctl: IutCtl):
@@ -1225,12 +1283,17 @@ def gatts_add_char(iutctl: IutCtl, hdl, prop, perm, uuid):
 def gatts_set_val(iutctl: IutCtl, hdl, val):
     logging.debug("%s %r %r ", gatts_set_val.__name__, hdl, val)
 
-    if type(hdl) is str:
+    if isinstance(hdl, str):
         hdl = int(hdl, 16)
 
     data_ba = bytearray()
     hdl_ba = struct.pack('H', hdl)
-    val_ba = binascii.unhexlify(bytearray(val.encode()))
+    if isinstance(val, str):
+        val_ba = binascii.unhexlify(bytearray(val, 'utf-8'))
+    elif isinstance(val, bytes):
+        val_ba = binascii.unhexlify(val)
+    else:
+        val_ba = binascii.unhexlify(bytearray(val.encode('utf-8')))
     val_len_ba = struct.pack('H', len(val_ba))
 
     data_ba.extend(hdl_ba)
@@ -1457,10 +1520,12 @@ def gatts_get_attrs(iutctl: IutCtl, start_handle=0x0001,
     return dec_gatts_get_attrs_rp(tuple_data[0], tuple_hdr.data_len)
 
 
-def gatts_get_attr_val(iutctl: IutCtl, handle):
+def gatts_get_attr_val(iutctl: IutCtl, bd_addr: BleAddress, handle):
     logging.debug("%s %r", gatts_get_attr_val.__name__, handle)
 
-    data_ba = bytearray()
+    gap_wait_for_connection(iutctl)
+
+    data_ba = bytearray(bd_addr)
 
     if type(handle) is str:
         handle = int(handle, 16)
@@ -2456,6 +2521,799 @@ GATT_EV = {
     defs.GATT_EV_ATTR_VALUE_CHANGED: gatts_attr_value_changed_ev_,
 }
 
+#  GATT CL
+
+def gatt_cl_dec_disc_rsp(data, attr_type):
+    """Decodes Discovery Response data.
+
+    BTP Discovery Response frame format
+    0                  8
+    +------------------+------------+
+    | Attributes Count | Attributes |
+    +------------------+------------+
+
+    """
+    attrs_len = len(data) - 1
+    attr_cnt, attrs = struct.unpack('B%ds' % attrs_len, data)
+    attrs_list = []
+    offset = 0
+
+    for x in range(attr_cnt):
+        if attr_type == "service":
+            attr, attr_len = gatt_cl_dec_svc_attr(attrs[offset:])
+        elif attr_type == "include":
+            attr, attr_len = gatt_cl_dec_incl_attr(attrs[offset:])
+        elif attr_type == "characteristic":
+            attr, attr_len = gatt_cl_dec_chrc_attr(attrs[offset:])
+        else:  # descriptor
+            attr, attr_len = gatt_cl_dec_desc_attr(attrs[offset:])
+
+        attrs_list.append(attr)
+        offset += attr_len
+
+    return attrs_list
+
+
+def gatt_cl_dec_svc_attr(data):
+    """Decodes Service Attribute data from Discovery Response data.
+
+    BTP Single Service Attribute
+    0             16           32            40
+    +--------------+------------+-------------+------+
+    | Start Handle | End Handle | UUID Length | UUID |
+    +--------------+------------+-------------+------+
+
+    """
+    hdr = '<HHB'
+    hdr_len = struct.calcsize(hdr)
+
+    start_hdl, end_hdl, uuid_len = struct.unpack_from(hdr, data)
+    (uuid,) = struct.unpack_from('%ds' % uuid_len, data, hdr_len)
+    uuid = btp2uuid(uuid_len, uuid)
+
+    return (start_hdl, end_hdl, uuid), hdr_len + uuid_len
+
+
+def gatt_cl_dec_incl_attr(data):
+    """Decodes Included Service Attribute data from Discovery Response data.
+
+    BTP Single Included Service Attribute
+    0                16
+    +-----------------+-------------------+
+    | Included Handle | Service Attribute |
+    +-----------------+-------------------+
+
+    """
+    hdr = '<H'
+    hdr_len = struct.calcsize(hdr)
+
+    incl_hdl = struct.unpack_from(hdr, data)
+    svc, svc_len = gatt_cl_dec_svc_attr(data[hdr_len:])
+
+    return (incl_hdl, svc), hdr_len + svc_len
+
+
+def gatt_cl_dec_chrc_attr(data):
+    """Decodes Characteristic Attribute data from Discovery Response data.
+
+    BTP Single Characteristic Attribute
+    0       16             32           40            48
+    +--------+--------------+------------+-------------+------+
+    | Handle | Value Handle | Properties | UUID Length | UUID |
+    +--------+--------------+------------+-------------+------+
+
+    """
+    hdr = '<HHBB'
+    hdr_len = struct.calcsize(hdr)
+
+    chrc_hdl, val_hdl, props, uuid_len = struct.unpack_from(hdr, data)
+    (uuid,) = struct.unpack_from('%ds' % uuid_len, data, hdr_len)
+    uuid = btp2uuid(uuid_len, uuid)
+
+    return (chrc_hdl, val_hdl, props, uuid), hdr_len + uuid_len
+
+
+def gatt_cl_dec_desc_attr(data):
+    """Decodes Descriptor Attribute data from Discovery Response data.
+
+    BTP Single Descriptor Attribute
+    0       16            24
+    +--------+-------------+------+
+    | Handle | UUID Length | UUID |
+    +--------+-------------+------+
+
+    """
+    hdr = '<HB'
+    hdr_len = struct.calcsize(hdr)
+
+    hdl, uuid_len = struct.unpack_from(hdr, data)
+    (uuid,) = struct.unpack_from('%ds' % uuid_len, data, hdr_len)
+    uuid = btp2uuid(uuid_len, uuid)
+
+    return (hdl, uuid), hdr_len + uuid_len
+
+
+def gatt_cl_command_rsp_succ(iutctl: IutCtl):
+    logging.debug("%s", gatt_cl_command_rsp_succ.__name__)
+
+    tuple_hdr, tuple_data = iutctl.btp_worker.read()
+    logging.debug("received %r %r", tuple_hdr, tuple_data)
+
+    btp_hdr_check(tuple_hdr, defs.BTP_SERVICE_ID_GATTC)
+
+
+def gatt_cl_disc_prim_svcs(iutctl: IutCtl, bd_addr: BleAddress):
+    logging.debug("%s %r", gatt_cl_disc_prim_svcs.__name__, bd_addr)
+
+    gap_wait_for_connection(iutctl)
+
+    data_ba = bytearray(bd_addr)
+
+    iutctl.btp_worker.send(*GATT_CL['disc_prim_svcs'], data=data_ba)
+
+    gatt_cl_command_rsp_succ(iutctl)
+
+
+def gatt_cl_disc_prim_uuid(iutctl: IutCtl, bd_addr: BleAddress, uuid):
+    logging.debug("%s %r %r", gatt_cl_disc_prim_uuid.__name__, bd_addr,
+                  uuid)
+
+    gap_wait_for_connection(iutctl)
+
+    data_ba = bytearray(bd_addr)
+
+    uuid_ba = binascii.unhexlify(uuid.replace('-', ''))[::-1]
+
+    data_ba.extend([len(uuid_ba)])
+    data_ba.extend(uuid_ba)
+
+    iutctl.btp_worker.send(*GATT_CL['disc_prim_uuid'], data=data_ba)
+
+    gatt_cl_command_rsp_succ(iutctl)
+
+
+def gatt_cl_find_included(iutctl: IutCtl, bd_addr: BleAddress, start_hdl, end_hdl):
+    logging.debug("%s %r %r %r", gatt_cl_find_included.__name__,
+                  bd_addr, start_hdl, end_hdl)
+
+    gap_wait_for_connection(iutctl)
+
+    if isinstance(end_hdl, str):
+        end_hdl = int(end_hdl, 16)
+
+    if isinstance(start_hdl, str):
+        start_hdl = int(start_hdl, 16)
+
+    data_ba = bytearray(bd_addr)
+
+    start_hdl_ba = struct.pack('H', start_hdl)
+    end_hdl_ba = struct.pack('H', end_hdl)
+
+    data_ba.extend(start_hdl_ba)
+    data_ba.extend(end_hdl_ba)
+
+    iutctl.btp_worker.send(*GATT_CL['find_included'], data=data_ba)
+
+    gatt_cl_command_rsp_succ(iutctl)
+
+
+def gatt_cl_disc_all_chrc(iutctl: IutCtl, bd_addr: BleAddress, start_hdl, stop_hdl, svc=None):
+    logging.debug("%s %r %r %r %r", gatt_cl_disc_all_chrc.__name__,
+                  bd_addr, start_hdl, stop_hdl, svc)
+
+    stack = iutctl.stack
+    stack.gatt_cl.chrcs_cnt = None
+    stack.gatt_cl.chrcs = []
+
+    gap_wait_for_connection(iutctl)
+
+    if svc:
+        svc_nb = svc[1]
+        for s in stack.prim_svcs:
+            if not ((svc[0][0] and svc[0][0] != s[0]) and
+                    (svc[0][1] and svc[0][1] != s[1]) and
+                    (svc[0][2] and svc[0][2] != s[2])):
+
+                # To take n-th service
+                svc_nb -= 1
+                if svc_nb != 0:
+                    continue
+
+                start_hdl = s[0]
+                stop_hdl = s[1]
+
+                logging.debug("Got requested service!")
+
+                break
+
+    if isinstance(start_hdl, str):
+        start_hdl = int(start_hdl, 16)
+
+    if isinstance(stop_hdl, str):
+        stop_hdl = int(stop_hdl, 16)
+
+    data_ba = bytearray(bd_addr)
+    start_hdl_ba = struct.pack('H', start_hdl)
+    stop_hdl_ba = struct.pack('H', stop_hdl)
+
+    data_ba.extend(start_hdl_ba)
+    data_ba.extend(stop_hdl_ba)
+
+    iutctl.btp_worker.send(*GATT_CL['disc_all_chrc'], data=data_ba)
+
+    gatt_cl_command_rsp_succ(iutctl)
+
+
+def gatt_cl_disc_chrc_uuid(iutctl: IutCtl, bd_addr: BleAddress, start_hdl, stop_hdl,
+                           uuid):
+    logging.debug("%s %r %r %r %r", gatt_cl_disc_chrc_uuid.__name__,
+                  bd_addr, start_hdl, stop_hdl, uuid)
+    stack = iutctl.stack
+    stack.gatt_cl.chrcs_cnt = None
+    stack.gatt_cl.chrcs = []
+
+    gap_wait_for_connection(iutctl)
+
+    if isinstance(stop_hdl, str):
+        stop_hdl = int(stop_hdl, 16)
+
+    if isinstance(start_hdl, str):
+        start_hdl = int(start_hdl, 16)
+
+    data_ba = bytearray(bd_addr)
+    start_hdl_ba = struct.pack('H', start_hdl)
+    stop_hdl_ba = struct.pack('H', stop_hdl)
+
+    if "-" in uuid:
+        uuid = uuid.replace("-", "")
+    if uuid.startswith("0x"):
+        uuid = uuid.replace("0x", "")
+    uuid_ba = binascii.unhexlify(uuid)[::-1]
+
+    data_ba.extend(start_hdl_ba)
+    data_ba.extend(stop_hdl_ba)
+    data_ba.extend(chr(len(uuid_ba)).encode('utf-8'))
+    data_ba.extend(uuid_ba)
+
+    iutctl.btp_worker.send(*GATT_CL['disc_chrc_uuid'], data=data_ba)
+
+    gatt_cl_command_rsp_succ(iutctl)
+
+
+def gatt_cl_disc_all_desc(iutctl: IutCtl, bd_addr: BleAddress, start_hdl, stop_hdl):
+    logging.debug("%s %r %r %r", gatt_cl_disc_all_desc.__name__,
+                  bd_addr, start_hdl, stop_hdl)
+    stack = iutctl.stack
+    stack.gatt_cl.dscs_cnt = None
+    stack.gatt_cl.dscs = []
+
+    gap_wait_for_connection(iutctl)
+
+    if isinstance(start_hdl, str):
+        start_hdl = int(start_hdl, 16)
+
+    if isinstance(stop_hdl, str):
+        stop_hdl = int(stop_hdl, 16)
+
+    data_ba = bytearray(bd_addr)
+    start_hdl_ba = struct.pack('H', start_hdl)
+    stop_hdl_ba = struct.pack('H', stop_hdl)
+
+    data_ba.extend(start_hdl_ba)
+    data_ba.extend(stop_hdl_ba)
+
+    iutctl.btp_worker.send(*GATT_CL['disc_all_desc'], data=data_ba)
+
+    gatt_cl_command_rsp_succ(iutctl)
+
+
+def gatt_cl_read(iutctl: IutCtl, bd_addr: BleAddress, hdl):
+    logging.debug("%s %r %r", gatt_cl_read.__name__, bd_addr,
+                  hdl)
+    stack = iutctl.stack
+
+    gap_wait_for_connection(iutctl)
+
+    data_ba = bytearray(bd_addr)
+    if isinstance(hdl, str):
+        hdl = int(hdl, 16)
+    hdl_ba = struct.pack('H', hdl)
+
+    data_ba.extend(hdl_ba)
+
+    iutctl.btp_worker.send(*GATT_CL['read'], data=data_ba)
+
+    stack.gatt_cl.set_event_to_await(stack.gatt_cl.is_read_complete)
+
+    gatt_cl_command_rsp_succ(iutctl)
+
+
+def gatt_cl_read_long(iutctl: IutCtl, bd_addr: BleAddress, hdl, off, modif_off=None):
+    logging.debug("%s %r %r %r %r", gatt_cl_read_long.__name__,
+                  bd_addr, hdl, off, modif_off)
+    stack = iutctl.stack
+
+    gap_wait_for_connection(iutctl)
+
+    data_ba = bytearray(bd_addr)
+
+    if isinstance(off, str):
+        off = int(off, 16)
+    if modif_off:
+        off += modif_off
+    if isinstance(hdl, str):
+        hdl = int(hdl, 16)
+
+    hdl_ba = struct.pack('H', hdl)
+    off_ba = struct.pack('H', off)
+
+    data_ba.extend(hdl_ba)
+    data_ba.extend(off_ba)
+
+    iutctl.btp_worker.send(*GATT_CL['read_long'], data=data_ba)
+    stack.gatt_cl.set_event_to_await(stack.gatt_cl.is_read_complete)
+
+    gatt_cl_command_rsp_succ(iutctl)
+
+
+def gatt_cl_write(iutctl: IutCtl, bd_addr: BleAddress, hdl, val, val_mtp=None):
+    logging.debug("%s %r %r %r %r", gatt_cl_write.__name__,
+                  bd_addr, hdl, val, val_mtp)
+    stack = iutctl.stack
+
+    gap_wait_for_connection(iutctl)
+
+    data_ba = bytearray(bd_addr)
+
+    if isinstance(hdl, str):
+        hdl = int(hdl, 16)
+
+    if val_mtp:
+        val *= int(val_mtp)
+
+    hdl_ba = struct.pack('H', hdl)
+    val_ba = binascii.unhexlify(val)
+    val_len_ba = struct.pack('H', len(val_ba))
+
+    data_ba.extend(hdl_ba)
+    data_ba.extend(val_len_ba)
+    data_ba.extend(val_ba)
+
+    iutctl.btp_worker.send(*GATT_CL['write'], data=data_ba)
+
+    stack.gatt_cl.set_event_to_await(stack.gatt_cl.is_write_completed)
+
+    gatt_cl_command_rsp_succ(iutctl)
+
+
+def gatt_cl_write_long(iutctl: IutCtl, bd_addr: BleAddress, hdl, off, val, length=None):
+    logging.debug("%s %r %r %r %r %r", gatt_cl_write_long.__name__,
+                  bd_addr, hdl, off, val, length)
+    stack = iutctl.stack
+
+    gap_wait_for_connection(iutctl)
+
+    if isinstance(hdl, str):
+        hdl = int(hdl, 16)  # convert string in hex format to int
+
+    if isinstance(off, str):
+        off = int(off, 16)
+
+    if length:
+        val *= int(length)
+
+    hdl_ba = struct.pack('H', hdl)
+    off_ba = struct.pack('H', off)
+    val_ba = bytes.fromhex(val)
+    val_len_ba = struct.pack('H', len(val_ba))
+
+    data_ba = bytearray(bd_addr)
+    data_ba.extend(hdl_ba)
+    data_ba.extend(off_ba)
+    data_ba.extend(val_len_ba)
+    data_ba.extend(val_ba)
+
+    iutctl.btp_worker.send(*GATT_CL['write_long'], data=data_ba)
+
+    stack.gatt_cl.set_event_to_await(stack.gatt_cl.is_write_completed)
+
+    gatt_cl_command_rsp_succ(iutctl)
+
+
+def gatt_cl_cfg_notify(iutctl: IutCtl, bd_addr: BleAddress, enable, ccc_hdl):
+    logging.debug("%s %r, %r, %r", gatt_cl_cfg_notify.__name__,
+                  bd_addr, enable, ccc_hdl)
+
+    gap_wait_for_connection(iutctl)
+
+    if isinstance(ccc_hdl, str):
+        ccc_hdl = int(ccc_hdl, 16)
+
+    data_ba = bytearray(bd_addr)
+    ccc_hdl_ba = struct.pack('H', ccc_hdl)
+
+    data_ba.extend(chr(enable).encode('utf-8'))
+    data_ba.extend(ccc_hdl_ba)
+
+    iutctl.btp_worker.send(*GATT_CL['cfg_notify'], data=data_ba)
+
+    gatt_cl_command_rsp_succ(iutctl)
+
+
+def gatt_cl_cfg_indicate(iutctl: IutCtl, bd_addr: BleAddress, enable, ccc_hdl):
+    logging.debug("%s %r, %r, %r", gatt_cl_cfg_indicate.__name__,
+                  bd_addr, enable, ccc_hdl)
+
+    gap_wait_for_connection(iutctl)
+
+    if isinstance(ccc_hdl, str):
+        ccc_hdl = int(ccc_hdl, 16)
+
+    data_ba = bytearray(bd_addr)
+    ccc_hdl_ba = struct.pack('H', ccc_hdl)
+
+    data_ba.extend(chr(enable).encode('utf-8'))
+    data_ba.extend(ccc_hdl_ba)
+
+    iutctl.btp_worker.send(*GATT_CL['cfg_indicate'], data=data_ba)
+
+    gatt_cl_command_rsp_succ(iutctl)
+
+
+def gatt_cl_disc_all_prim_rsp_ev_(stack, data, data_len):
+    logging.debug("%s %r", gatt_cl_disc_all_prim_rsp_ev_.__name__, data)
+
+    db = stack.gatt_cl.db
+
+    fmt = '<B6sBB'
+
+    addr_type, addr, status, svc_cnt = \
+        struct.unpack_from(fmt, data[:struct.calcsize(fmt)])
+    logging.debug("%s received addr_type=%r addr=%r status=%r svc_cnt=%r",
+                  gatt_cl_disc_all_prim_rsp_ev_.__name__,
+                  addr_type, addr, status, svc_cnt)
+
+    svcs_data = data[struct.calcsize(fmt) - 1:]
+
+    stack.gatt_cl.prim_svcs = []
+    stack.gatt_cl.prim_svcs_cnt = svc_cnt
+
+    if svc_cnt == 0:
+        logging.debug("No services in response")
+        return
+
+    svcs = gatt_cl_dec_disc_rsp(svcs_data, 'service')
+
+    logging.debug("%s %r", gatt_cl_disc_all_prim_rsp_ev_.__name__, svcs)
+
+    for svc in svcs:
+        start_handle = "%04X" % (svc[0],)
+        end_handle = "%04X" % (svc[1],)
+        uuid = svc[2].upper()
+
+        # avoid repeated service uuid, it should be verified only once
+        if uuid not in stack.gatt_cl.prim_svcs:
+            stack.gatt_cl.prim_svcs.append((start_handle, end_handle, uuid))
+            db.attr_add(start_handle, GattPrimary(start_handle, 1, uuid,
+                                                  0, end_handle))
+
+
+def gatt_cl_disc_prim_uuid_rsp_ev_(stack, data, data_len):
+    logging.debug("%s %r", gatt_cl_disc_prim_uuid_rsp_ev_.__name__, data)
+
+    db = stack.gatt_cl.db
+
+    fmt = '<B6sBB'
+
+    addr_type, addr, status, svc_cnt = \
+        struct.unpack_from(fmt, data[:struct.calcsize(fmt)])
+    logging.debug("%s received addr_type=%r addr=%r status=%r svc_cnt=%r",
+                  gatt_cl_disc_prim_uuid_rsp_ev_.__name__,
+                  addr_type, addr, status, svc_cnt)
+
+    # svcs_data contains service count and services - adjust data offset
+    # to include count
+    svcs_data = data[struct.calcsize(fmt) - 1:]
+
+    stack.gatt_cl.prim_svcs = []
+    stack.gatt_cl.prim_svcs_cnt = svc_cnt
+
+    if svc_cnt == 0:
+        logging.debug("No services in response")
+        return
+
+    svcs = gatt_cl_dec_disc_rsp(svcs_data, 'service')
+
+    logging.debug("%s %r", gatt_cl_disc_prim_uuid_rsp_ev_.__name__, svcs)
+
+
+    for svc in svcs:
+        start_handle = int("%04X" % (svc[0],), 16)
+        end_handle = "%04X" % (svc[1],)
+        uuid = svc[2]
+
+        stack.gatt_cl.prim_svcs.append((start_handle, end_handle, uuid))
+        db.attr_add(start_handle, GattPrimary(start_handle, 1,
+                                              uuid, 0, end_handle))
+
+
+def gatt_cl_find_incld_rsp_ev_(stack, data, data_len):
+    logging.debug("%s %r", gatt_cl_find_incld_rsp_ev_.__name__, data)
+
+    db = stack.gatt_cl.db
+
+    fmt = '<B6sBB'
+
+    addr_type, addr, status, svc_cnt = \
+        struct.unpack_from(fmt, data[:struct.calcsize(fmt)])
+    logging.debug("%s received addr_type=%r addr=%r status=%r svc_cnt=%r",
+                  gatt_cl_find_incld_rsp_ev_.__name__,
+                  addr_type, addr, status, svc_cnt)
+
+    svcs_data = data[struct.calcsize(fmt) - 1:]
+
+    stack.gatt_cl.incl_svcs = []
+    stack.gatt_cl.incl_svcs_cnt = svc_cnt
+
+    if svc_cnt == 0:
+        logging.debug("No services in response")
+        return
+    incl_tuples = gatt_cl_dec_disc_rsp(svcs_data, 'include')
+
+    logging.debug("%s %r", gatt_cl_find_incld_rsp_ev_.__name__, incl_tuples)
+
+
+    for incl in incl_tuples:
+        att_handle = "%04X" % (incl[0][0],)
+        inc_svc_handle = "%04X" % (incl[1][0],)
+        end_grp_handle = "%04X" % (incl[1][1],)
+        uuid = incl[1][2]
+
+        stack.gatt_cl.incl_svcs.append((att_handle,
+                                        inc_svc_handle,
+                                        end_grp_handle,
+                                        uuid))
+        db.attr_add(att_handle, GattServiceIncluded(att_handle, 1, uuid, 0,
+                                                    inc_svc_handle,
+                                                    end_grp_handle))
+
+
+def gatt_cl_disc_all_chrc_rsp_ev_(stack, data, data_len):
+    logging.debug("%s %r", gatt_cl_disc_all_chrc_rsp_ev_.__name__, data)
+
+    attrs = []
+    db = stack.gatt_cl.db
+    fmt = '<B6sBB'
+
+    addr_type, addr, status, char_cnt = \
+        struct.unpack_from(fmt, data[:struct.calcsize(fmt)])
+    logging.debug("%s received addr_type=%r addr=%r status=%r char_cnt=%r",
+                  gatt_cl_disc_all_chrc_rsp_ev_.__name__,
+                  addr_type, addr, status, char_cnt)
+
+    svcs_data = data[struct.calcsize(fmt) - 1:]
+
+    stack.gatt_cl.chrcs = []
+    stack.gatt_cl.chrcs_cnt = char_cnt
+
+    if char_cnt == 0:
+        logging.debug("No characteristics in response")
+        return
+
+    chrcs = gatt_cl_dec_disc_rsp(svcs_data, 'characteristic')
+
+    logging.debug("%s %r", gatt_cl_disc_all_chrc_rsp_ev_.__name__, chrcs)
+
+    for chrc in chrcs:
+        (handle, value_handle, prop, uuid) = chrc
+        attrs.append(GattCharacteristic(handle=handle,
+                                        perm=Perm.read,
+                                        uuid=uuid,
+                                        att_rsp=0,
+                                        prop=prop,
+                                        value_handle=value_handle))
+
+
+    for attr in attrs:
+        stack.gatt_cl.chrcs.append((attr.value_handle, attr.uuid))
+
+    for chrc in chrcs:
+        (handle, value_handle, prop, uuid) = chrc
+        db.attr_add(handle, GattCharacteristic(handle, 1, uuid, 0,
+                                               prop, value_handle))
+
+
+def gatt_cl_disc_chrc_uuid_rsp_ev_(stack, data, data_len):
+    logging.debug("%s %r", gatt_cl_disc_chrc_uuid_rsp_ev_.__name__, data)
+
+    attrs = []
+    db = stack.gatt_cl.db
+    fmt = '<B6sBB'
+
+    addr_type, addr, status, char_cnt = \
+        struct.unpack_from(fmt, data[:struct.calcsize(fmt)])
+    logging.debug("%s received addr_type=%r addr=%r status=%r char_cnt=%r",
+                  gatt_cl_disc_chrc_uuid_rsp_ev_.__name__,
+                  addr_type, addr, status, char_cnt)
+
+    svcs_data = data[struct.calcsize(fmt) - 1:]
+
+    stack.gatt_cl.chrcs = []
+    stack.gatt_cl.chrcs_cnt = char_cnt
+
+    if char_cnt == 0:
+        logging.debug("No characteristics in response")
+        return
+
+    chrcs = gatt_cl_dec_disc_rsp(svcs_data, 'characteristic')
+
+    logging.debug("%s %r", gatt_cl_disc_chrc_uuid_rsp_ev_.__name__, chrcs)
+
+    for chrc in chrcs:
+        (handle, value_handle, prop, uuid) = chrc
+        attrs.append(GattCharacteristic(handle=handle,
+                                        perm=Perm.read,
+                                        uuid=uuid,
+                                        att_rsp=0,
+                                        prop=prop,
+                                        value_handle=value_handle))
+
+    for attr in attrs:
+        stack.gatt_cl.chrcs.append((attr.value_handle, attr.uuid))
+
+    for chrc in chrcs:
+        (handle, value_handle, prop, uuid) = chrc
+        db.attr_add(handle, GattCharacteristic(handle, 1, uuid, 0,
+                                               prop, value_handle))
+
+
+def gatt_cl_disc_all_desc_rsp_ev_(stack, data, data_len):
+    logging.debug("%s %r", gatt_cl_disc_all_desc_rsp_ev_.__name__, data)
+
+    fmt = '<B6sBB'
+    db = stack.gatt_cl.db
+
+    addr_type, addr, status, char_cnt = \
+        struct.unpack_from(fmt, data[:struct.calcsize(fmt)])
+    logging.debug("%s received addr_type=%r addr=%r status=%r char_cnt=%r",
+                  gatt_cl_disc_all_desc_rsp_ev_.__name__,
+                  addr_type, addr, status, char_cnt)
+
+    svcs_data = data[struct.calcsize(fmt) - 1:]
+
+    stack.gatt_cl.dscs = []
+    stack.gatt_cl.dscs_cnt = char_cnt
+
+    if char_cnt == 0:
+        logging.debug("No descriptors in response")
+        return
+
+    descs = gatt_cl_dec_disc_rsp(svcs_data, 'descriptor')
+
+    logging.debug("%s %r", gatt_cl_disc_all_desc_rsp_ev_.__name__, descs)
+
+    stack.gatt_cl.dscs = []
+    stack.gatt_cl.dscs_cnt = char_cnt
+
+    for desc in descs:
+        handle = int("%04X" % (desc[0],), 16)
+        uuid = desc[1]
+        stack.gatt_cl.dscs.append((handle, uuid))
+        db.attr_add(handle, GattCharacteristicDescriptor(handle, 1,
+                                                         uuid, 0, None))
+
+
+def gatt_cl_read_rsp_ev_(stack, data, data_len):
+    logging.debug("%s %r", gatt_cl_read_rsp_ev_.__name__, data)
+ 
+    fmt = '<B6sBH'
+
+    addr_type, addr, status, data_length = \
+        struct.unpack_from(fmt, data[:struct.calcsize(fmt)])
+    logging.debug("%s received addr_type=%r addr=%r status=%r data_len=%r",
+                  gatt_cl_read_rsp_ev_.__name__,
+                  addr_type, addr, status, data_length)
+
+    clear_verify_values(stack)
+
+    if data_length == 0:
+        logging.debug("No data in response")
+        return
+
+    rp_data = data[struct.calcsize(fmt):]
+
+    (value,) = struct.unpack_from('%ds' % data_length, rp_data)
+
+    logging.debug("%s %r %r", gatt_cl_read_rsp_ev_.__name__, status, value)
+
+    add_to_verify_values(stack, att_rsp_str[status])
+    add_to_verify_values(stack, (binascii.hexlify(value)).upper())
+
+    logging.debug("Set verify values to: %r", get_verify_values(stack))
+
+
+def gatt_cl_read_long_rsp_ev_(stack, data, data_len):
+    logging.debug("%s %r", gatt_cl_read_long_rsp_ev_.__name__, data)
+
+    fmt = '<B6sBH'
+
+    addr_type, addr, status, data_length = \
+        struct.unpack_from(fmt, data[:struct.calcsize(fmt)])
+    logging.debug("%s received addr_type=%r addr=%r status=%r data_len=%r",
+                  gatt_cl_read_long_rsp_ev_.__name__,
+                  addr_type, addr, status, data_length)
+
+    rp_data = data[struct.calcsize(fmt):]
+
+    (value,) = struct.unpack_from('%ds' % data_length, rp_data)
+
+    logging.debug("%s %r %r", gatt_cl_read_long_rsp_ev_.__name__, status, value)
+
+    clear_verify_values(stack)
+    add_to_verify_values(stack, att_rsp_str[status])
+    add_to_verify_values(stack, (binascii.hexlify(value)).upper())
+
+    logging.debug("Set verify values to: %r", get_verify_values(stack))
+
+
+def gatt_cl_write_rsp_ev_(stack, data, data_len):
+    logging.debug("%s %r", gatt_cl_write_rsp_ev_.__name__, data)
+
+    fmt = '<B6sB'
+
+    addr_type, addr, status = \
+        struct.unpack_from(fmt, data[:struct.calcsize(fmt)])
+    logging.debug("%s received addr_type=%r addr=%r status=%r",
+                  gatt_cl_write_rsp_ev_.__name__,
+                  addr_type, addr, status)
+    stack.gatt_cl.write_status = status
+
+    clear_verify_values(stack)
+    add_to_verify_values(stack, att_rsp_str[status])
+
+
+def gatt_cl_notification_rxed_ev_(stack, data, data_len):
+    logging.debug("%s %r", gatt_cl_notification_rxed_ev_.__name__, data)
+
+    fmt = '<B6sBHH'
+
+    addr_type, addr, type, handle, data_length = \
+        struct.unpack_from(fmt, data[:struct.calcsize(fmt)])
+    logging.debug("%s received addr_type=%r addr=%r"
+                  "type=%r handle=%r data_length=%r",
+                  gatt_cl_notification_rxed_ev_.__name__,
+                  addr_type, addr, type, handle, data_length)
+
+    if data_length == 0:
+        logging.debug("No data in response")
+        return
+
+    notification_data = binascii.hexlify(data[struct.calcsize(fmt):]).upper()
+
+    # save addr as BleAddress object, type, handle, data - this is needed
+    # for verify_notification_ev
+    addr_str = ''.join(f'{byte:02x}' for byte in addr[::-1])
+    ble_addr = BleAddress(addr_str, addr_type)
+
+    stack.gatt_cl.notifications.append((ble_addr, type, handle, notification_data))
+
+
+GATT_CL_EV = {
+    defs.GATTC_DISC_ALL_PRIM_RP: gatt_cl_disc_all_prim_rsp_ev_,
+    defs.GATTC_DISC_PRIM_UUID_RP: gatt_cl_disc_prim_uuid_rsp_ev_,
+    defs.GATTC_FIND_INCLUDED_RP: gatt_cl_find_incld_rsp_ev_,
+    defs.GATTC_DISC_ALL_CHRC_RP: gatt_cl_disc_all_chrc_rsp_ev_,
+    defs.GATTC_DISC_CHRC_UUID_RP: gatt_cl_disc_chrc_uuid_rsp_ev_,
+    defs.GATTC_DISC_ALL_DESC_RP: gatt_cl_disc_all_desc_rsp_ev_,
+    defs.GATTC_READ_RP: gatt_cl_read_rsp_ev_,
+    defs.GATTC_READ_LONG_RP: gatt_cl_read_long_rsp_ev_,
+    defs.GATTC_WRITE_RP: gatt_cl_write_rsp_ev_,
+    defs.GATTC_WRITE_LONG_RP: gatt_cl_write_rsp_ev_,
+    defs.GATTC_CFG_NOTIFY_RP: gatt_cl_write_rsp_ev_,
+    defs.GATTC_CFG_INDICATE_RP: gatt_cl_write_rsp_ev_,
+    defs.GATTC_EV_NOTIFICATION_RXED: gatt_cl_notification_rxed_ev_,
+}
+
 
 def l2cap_command_rsp_succ(iutctl: IutCtl, op=None):
     logging.debug("%s", l2cap_command_rsp_succ.__name__)
@@ -3020,6 +3878,7 @@ class BTPEventHandler:
             defs.BTP_SERVICE_ID_GAP: GAP_EV,
             defs.BTP_SERVICE_ID_GATT: GATT_EV,
             defs.BTP_SERVICE_ID_MESH: MESH_EV,
+            defs.BTP_SERVICE_ID_GATTC: GATT_CL_EV,
         }
 
     def clear_listeners(self):
