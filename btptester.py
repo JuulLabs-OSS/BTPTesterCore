@@ -149,6 +149,8 @@ def main():
         if args.fail_fast and fail:
             break
 
+        rerun_fail = False
+
         if args.rerun_reverse:
             suite = create_suite(peripheral, central)
             print("\n### Starting reverse run " + str(run_count + 1) + "/" \
