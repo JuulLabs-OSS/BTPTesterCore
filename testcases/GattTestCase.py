@@ -16,6 +16,7 @@
 
 import time
 import sys
+from binascii import hexlify
 
 from pybtp import btp
 from pybtp.types import PTS_DB, Prop, Perm, UUID
@@ -43,19 +44,22 @@ class GattTestCase(BTPTestCase):
         Verify that a Generic Attribute Profile client discovers Primary
         Services in a GATT server.
         """
-
+        stack = self.iut1.stack
         self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
-        btp.gattc_disc_prim_svcs(self.iut1,
-                                 self.iut2.stack.gap.iut_addr_get())
-
-        db = GattDB()
-        btp.gattc_disc_prim_svcs_rsp(self.iut1, db)
+        if stack.gatt_cl:
+            btp.gatt_cl_disc_prim_svcs(self.iut1, self.iut2.stack.gap.iut_addr_get())
+            stack.gatt_cl.wait_for_prim_svcs()
+            db = stack.gatt_cl.db
+        else:
+            btp.gattc_disc_prim_svcs(self.iut1,
+                                     self.iut2.stack.gap.iut_addr_get())
+            db = GattDB()
+            btp.gattc_disc_prim_svcs_rsp(self.iut1, db)
 
         self.assertIsNotNone(db.find_svc_by_uuid(PTS_DB.SVC))
-
         disconnection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
     def test_btp_GATT_CL_GAD_2(self):
@@ -63,20 +67,26 @@ class GattTestCase(BTPTestCase):
         Verify that a Generic Attribute Profile client can discover Primary
         Services selected by service UUID, using 16-bit and 128-bit UUIDs.
         """
-
+        stack = self.iut1.stack
         self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
-        btp.gattc_disc_prim_uuid(self.iut1,
-                                 self.iut2.stack.gap.iut_addr_get(),
-                                 PTS_DB.SVC)
+        if stack.gatt_cl:
+            btp.gatt_cl_disc_prim_uuid(self.iut1, self.iut2.stack.gap.iut_addr_get(),
+                                       PTS_DB.SVC)
+            stack.gatt_cl.wait_for_prim_svcs()
+            db = stack.gatt_cl.db
+        else:
+            btp.gattc_disc_prim_uuid(self.iut1,
+                                     self.iut2.stack.gap.iut_addr_get(),
+                                     PTS_DB.SVC)
 
-        db = GattDB()
-        btp.gattc_disc_prim_uuid_rsp(self.iut1, db)
+            db = GattDB()
+            btp.gattc_disc_prim_uuid_rsp(self.iut1, db)
+            self.assertIsNotNone(db.find_svc_by_uuid(PTS_DB.SVC))
 
         self.assertIsNotNone(db.find_svc_by_uuid(PTS_DB.SVC))
-
         disconnection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
     def test_btp_GATT_CL_GAD_3(self):
@@ -84,30 +94,38 @@ class GattTestCase(BTPTestCase):
         Verify that a Generic Attribute Profile client can find include service
         declarations within a specified service definition on a server.
         """
-
+        stack = self.iut1.stack
         self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
-        btp.gattc_disc_prim_svcs(self.iut1,
-                                 self.iut2.stack.gap.iut_addr_get())
+        if stack.gatt_cl:
+            db = stack.gatt_cl.db
+            btp.gatt_cl_disc_prim_svcs(self.iut1, self.iut2.stack.gap.iut_addr_get())
+            stack.gatt_cl.wait_for_prim_svcs()
 
-        db = GattDB()
-        btp.gattc_disc_prim_svcs_rsp(self.iut1, db)
+            btp.gatt_cl_find_included(self.iut1, self.iut2.stack.gap.iut_addr_get(),
+                                      '0001', 'FFFF')
+            stack.gatt_cl.wait_for_incl_svcs()
+        else:
+            btp.gattc_disc_prim_svcs(self.iut1,
+                                     self.iut2.stack.gap.iut_addr_get())
 
-        for svc in db.get_services():
-            start_hdl, end_hdl = svc.handle, svc.end_hdl
+            db = GattDB()
+            btp.gattc_disc_prim_svcs_rsp(self.iut1, db)
 
-            btp.gattc_find_included(self.iut1,
-                                    self.iut2.stack.gap.iut_addr_get(),
-                                    start_hdl, end_hdl)
+            for svc in db.get_services():
+                start_hdl, end_hdl = svc.handle, svc.end_hdl
 
-            btp.gattc_find_included_rsp(self.iut1, db)
+                btp.gattc_find_included(self.iut1,
+                                        self.iut2.stack.gap.iut_addr_get(),
+                                        start_hdl, end_hdl)
 
-        db.print_db()
+                btp.gattc_find_included_rsp(self.iut1, db)
+
+            db.print_db()
 
         self.assertIsNotNone(db.find_inc_svc_by_uuid(PTS_DB.INC_SVC))
-
         disconnection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
     def test_btp_GATT_CL_GAD_4(self):
@@ -115,34 +133,48 @@ class GattTestCase(BTPTestCase):
         Verify that a Generic Attribute Profile client can discover
         characteristic declarations within a specified service definition.
         """
-
+        stack = self.iut1.stack
         self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
-        btp.gattc_disc_prim_uuid(self.iut1,
-                                 self.iut2.stack.gap.iut_addr_get(),
-                                 PTS_DB.SVC)
+        if stack.gatt_cl:
+            db = stack.gatt_cl.db
+            btp.gatt_cl_disc_prim_uuid(self.iut1, self.iut2.stack.gap.iut_addr_get(),
+                                       PTS_DB.SVC)
+            stack.gatt_cl.wait_for_prim_svcs()
 
-        db = GattDB()
-        btp.gattc_disc_prim_uuid_rsp(self.iut1, db)
+            svc = db.find_svc_by_uuid(PTS_DB.SVC)
+            self.assertIsNotNone(svc)
 
-        svc = db.find_svc_by_uuid(PTS_DB.SVC)
-        self.assertIsNotNone(svc)
+            start_hdl, end_hdl = svc.handle, svc.end_hdl
 
-        start_hdl, end_hdl = svc.handle, svc.end_hdl
+            btp.gatt_cl_disc_all_chrc(self.iut1, self.iut2.stack.gap.iut_addr_get(),
+                                      start_hdl, end_hdl)
+            stack.gatt_cl.wait_for_chrcs()
+        else:
+            btp.gattc_disc_prim_uuid(self.iut1,
+                                     self.iut2.stack.gap.iut_addr_get(),
+                                     PTS_DB.SVC)
 
-        btp.gattc_disc_all_chrc(self.iut1,
-                                self.iut2.stack.gap.iut_addr_get(),
-                                start_hdl, end_hdl)
+            db = GattDB()
+            btp.gattc_disc_prim_uuid_rsp(self.iut1, db)
 
-        btp.gattc_disc_all_chrc_rsp(self.iut1, db)
+            svc = db.find_svc_by_uuid(PTS_DB.SVC)
+            self.assertIsNotNone(svc)
 
-        db.print_db()
+            start_hdl, end_hdl = svc.handle, svc.end_hdl
+
+            btp.gattc_disc_all_chrc(self.iut1,
+                                    self.iut2.stack.gap.iut_addr_get(),
+                                    start_hdl, end_hdl)
+
+            btp.gattc_disc_all_chrc_rsp(self.iut1, db)
+
+            db.print_db()
 
         chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
         self.assertIsNotNone(chr)
-
         disconnection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
     def test_btp_GATT_CL_GAD_5(self):
@@ -151,22 +183,29 @@ class GattTestCase(BTPTestCase):
         characteristics of a specified service, using 16-bit and 128-bit
         characteristic UUIDs.
         """
-
+        stack = self.iut1.stack
         self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
-        btp.gattc_disc_chrc_uuid(self.iut1,
-                                 self.iut2.stack.gap.iut_addr_get(),
-                                 0x0001, 0xffff, PTS_DB.CHR_READ_WRITE)
+        if stack.gatt_cl:
+            db = stack.gatt_cl.db
+            btp.gatt_cl_disc_chrc_uuid(self.iut1,
+                                       self.iut2.stack.gap.iut_addr_get(),
+                                       0x0001, 0xffff, PTS_DB.CHR_READ_WRITE)
+            stack.gatt_cl.wait_for_chrcs()
+        else:
 
-        db = GattDB()
-        btp.gattc_disc_chrc_uuid_rsp(self.iut1, db)
+            btp.gattc_disc_chrc_uuid(self.iut1,
+                                     self.iut2.stack.gap.iut_addr_get(),
+                                     0x0001, 0xffff, PTS_DB.CHR_READ_WRITE)
 
-        db.print_db()
+            db = GattDB()
+            btp.gattc_disc_chrc_uuid_rsp(self.iut1, db)
+
+            db.print_db()
 
         chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
-
         self.assertIsNotNone(chr)
 
         disconnection_procedure(self, central=self.iut1, peripheral=self.iut2)
@@ -176,48 +215,72 @@ class GattTestCase(BTPTestCase):
         Verify that a Generic Attribute Profile client can find all Descriptors
         of a specified Characteristic.
         """
-
+        stack = self.iut1.stack
         self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
-        btp.gattc_disc_prim_uuid(self.iut1,
-                                 self.iut2.stack.gap.iut_addr_get(),
-                                 PTS_DB.SVC)
+        if stack.gatt_cl:
+            db = stack.gatt_cl.db
+            btp.gatt_cl_disc_prim_uuid(self.iut1,
+                                       self.iut2.stack.gap.iut_addr_get(),
+                                       PTS_DB.SVC)
+            stack.gatt_cl.wait_for_prim_svcs()
+            svc = db.find_svc_by_uuid(PTS_DB.SVC)
+            self.assertIsNotNone(svc)
 
-        db = GattDB()
-        btp.gattc_disc_prim_uuid_rsp(self.iut1, db)
+            start_hdl, end_hdl = svc.handle, svc.end_hdl
 
-        svc = db.find_svc_by_uuid(PTS_DB.SVC)
-        self.assertIsNotNone(svc)
+            btp.gatt_cl_disc_all_chrc(self.iut1,
+                                      self.iut2.stack.gap.iut_addr_get(),
+                                      start_hdl, end_hdl)
+            stack.gatt_cl.wait_for_chrcs()
+            chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
+            self.assertIsNotNone(chr)
 
-        start_hdl, end_hdl = svc.handle, svc.end_hdl
+            end_hdl = db.find_characteristic_end(chr.handle)
+            self.assertIsNotNone(end_hdl)
 
-        btp.gattc_disc_all_chrc(self.iut1,
-                                self.iut2.stack.gap.iut_addr_get(),
-                                start_hdl, end_hdl)
+            btp.gatt_cl_disc_all_desc(self.iut1, self.iut2.stack.gap.iut_addr_get(),
+                                      chr.value_handle + 1, end_hdl)
+            stack.gatt_cl.wait_for_descs()
+        else:
+            btp.gattc_disc_prim_uuid(self.iut1,
+                                     self.iut2.stack.gap.iut_addr_get(),
+                                     PTS_DB.SVC)
 
-        btp.gattc_disc_all_chrc_rsp(self.iut1, db)
+            db = GattDB()
+            btp.gattc_disc_prim_uuid_rsp(self.iut1, db)
 
-        db.print_db()
+            svc = db.find_svc_by_uuid(PTS_DB.SVC)
+            self.assertIsNotNone(svc)
 
-        chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
-        self.assertIsNotNone(chr)
+            start_hdl, end_hdl = svc.handle, svc.end_hdl
 
-        end_hdl = db.find_characteristic_end(chr.handle)
-        self.assertIsNotNone(end_hdl)
+            btp.gattc_disc_all_chrc(self.iut1,
+                                    self.iut2.stack.gap.iut_addr_get(),
+                                    start_hdl, end_hdl)
 
-        btp.gattc_disc_all_desc(self.iut1,
-                                self.iut2.stack.gap.iut_addr_get(),
-                                chr.value_handle + 1, end_hdl)
+            btp.gattc_disc_all_chrc_rsp(self.iut1, db)
 
-        btp.gattc_disc_all_desc_rsp(self.iut1, db)
+            db.print_db()
 
-        db.print_db()
+            chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
+            self.assertIsNotNone(chr)
+
+            end_hdl = db.find_characteristic_end(chr.handle)
+            self.assertIsNotNone(end_hdl)
+
+            btp.gattc_disc_all_desc(self.iut1,
+                                    self.iut2.stack.gap.iut_addr_get(),
+                                    chr.value_handle + 1, end_hdl)
+
+            btp.gattc_disc_all_desc_rsp(self.iut1, db)
+
+            db.print_db()
 
         dsc = db.find_dsc_by_uuid(PTS_DB.DSC_READ_WRITE)
         self.assertIsNotNone(dsc)
-
         disconnection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
     def test_btp_GATT_CL_GAR_1(self):
@@ -225,31 +288,50 @@ class GattTestCase(BTPTestCase):
         Verify that a Generic Attribute Profile client can read a
         Characteristic Value selected by handle.
         """
+        stack = self.iut1.stack
 
         self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
-        btp.gattc_disc_chrc_uuid(self.iut1,
-                                 self.iut2.stack.gap.iut_addr_get(),
-                                 0x0001, 0xffff, PTS_DB.CHR_READ_WRITE)
+        if stack.gatt_cl:
+            db = stack.gatt_cl.db
 
-        db = GattDB()
-        btp.gattc_disc_chrc_uuid_rsp(self.iut1, db)
+            btp.gatt_cl_disc_chrc_uuid(self.iut1,
+                                       self.iut2.stack.gap.iut_addr_get(),
+                                       0x0001, 0xffff, PTS_DB.CHR_READ_WRITE)
+            stack.gatt_cl.wait_for_chrcs()
 
-        db.print_db()
+            chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
+            self.assertIsNotNone(chr)
 
-        chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
-        self.assertIsNotNone(chr)
+            btp.gatt_cl_read(self.iut1,
+                             self.iut2.stack.gap.iut_addr_get(),
+                             chr.value_handle)
+            stack.gatt_cl.wait_for_read()
 
-        btp.gattc_read(self.iut1,
-                       self.iut2.stack.gap.iut_addr_get(),
-                       chr.value_handle)
+            self.assertEqual(stack.gatt_cl.verify_values[0], "No error")
+        else:
+            btp.gattc_disc_chrc_uuid(self.iut1,
+                                     self.iut2.stack.gap.iut_addr_get(),
+                                     0x0001, 0xffff, PTS_DB.CHR_READ_WRITE)
 
-        val = GattValue()
-        btp.gattc_read_rsp(self.iut1, val)
+            db = GattDB()
+            btp.gattc_disc_chrc_uuid_rsp(self.iut1, db)
 
-        self.assertEqual(val.att_rsp, "No error")
+            db.print_db()
+
+            chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
+            self.assertIsNotNone(chr)
+
+            btp.gattc_read(self.iut1,
+                           self.iut2.stack.gap.iut_addr_get(),
+                           chr.value_handle)
+
+            val = GattValue()
+            btp.gattc_read_rsp(self.iut1, val)
+
+            self.assertEqual(val.att_rsp, "No error")
 
         disconnection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
@@ -259,32 +341,51 @@ class GattTestCase(BTPTestCase):
         Value by selected handle. The Characteristic Value length is unknown
         to the client and might be long.
         """
+        stack = self.iut1.stack
 
         self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
-        btp.gattc_disc_chrc_uuid(self.iut1,
-                                 self.iut2.stack.gap.iut_addr_get(),
-                                 0x0001, 0xffff, PTS_DB.LONG_CHR_READ_WRITE)
+        if stack.gatt_cl:
+            db = stack.gatt_cl.db
 
-        db = GattDB()
-        btp.gattc_disc_chrc_uuid_rsp(self.iut1, db)
+            btp.gatt_cl_disc_chrc_uuid(self.iut1,
+                                       self.iut2.stack.gap.iut_addr_get(),
+                                       0x0001, 0xffff, PTS_DB.LONG_CHR_READ_WRITE)
+            stack.gatt_cl.wait_for_chrcs()
 
-        db.print_db()
+            chr = db.find_chr_by_uuid(PTS_DB.LONG_CHR_READ_WRITE)
+            self.assertIsNotNone(chr)
 
-        chr = db.find_chr_by_uuid(PTS_DB.LONG_CHR_READ_WRITE)
-        self.assertIsNotNone(chr)
+            btp.gatt_cl_read_long(self.iut1,
+                                  self.iut2.stack.gap.iut_addr_get(),
+                                  chr.value_handle, 0, 40)
+            stack.gatt_cl.wait_for_read()
 
-        btp.gattc_read_long(self.iut1,
-                            self.iut2.stack.gap.iut_addr_get(),
-                            chr.value_handle, 0)
+            self.assertEqual(stack.gatt_cl.verify_values[0], "No error")
+        else:
+            btp.gattc_disc_chrc_uuid(self.iut1,
+                                     self.iut2.stack.gap.iut_addr_get(),
+                                     0x0001, 0xffff, PTS_DB.LONG_CHR_READ_WRITE)
 
-        val = GattValue()
-        btp.gattc_read_long_rsp(self.iut1, val)
+            db = GattDB()
+            btp.gattc_disc_chrc_uuid_rsp(self.iut1, db)
 
-        self.assertEqual(val.att_rsp, "No error")
-        # self.assertEqual(val.value, value)
+            db.print_db()
+
+            chr = db.find_chr_by_uuid(PTS_DB.LONG_CHR_READ_WRITE)
+            self.assertIsNotNone(chr)
+
+            btp.gattc_read_long(self.iut1,
+                                self.iut2.stack.gap.iut_addr_get(),
+                                chr.value_handle, 0)
+
+            val = GattValue()
+            btp.gattc_read_long_rsp(self.iut1, val)
+
+            self.assertEqual(val.att_rsp, "No error")
+            # self.assertEqual(val.value, value)
 
         disconnection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
@@ -293,56 +394,95 @@ class GattTestCase(BTPTestCase):
         Verify that a Generic Attribute Profile client can read a characteristic
         descriptor selected by handle.
         """
+        stack = self.iut1.stack
 
         self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
-        btp.gattc_disc_prim_uuid(self.iut1,
-                                 self.iut2.stack.gap.iut_addr_get(),
-                                 PTS_DB.SVC)
+        if stack.gatt_cl:
+            db = stack.gatt_cl.db
+            btp.gatt_cl_disc_prim_uuid(self.iut1,
+                                       self.iut2.stack.gap.iut_addr_get(),
+                                       PTS_DB.SVC)
+            stack.gatt_cl.wait_for_prim_svcs()
 
-        db = GattDB()
-        btp.gattc_disc_prim_uuid_rsp(self.iut1, db)
+            svc = db.find_svc_by_uuid(PTS_DB.SVC)
+            self.assertIsNotNone(svc)
 
-        svc = db.find_svc_by_uuid(PTS_DB.SVC)
-        self.assertIsNotNone(svc)
+            start_hdl, end_hdl = svc.handle, svc.end_hdl
 
-        start_hdl, end_hdl = svc.handle, svc.end_hdl
+            btp.gatt_cl_disc_all_chrc(self.iut1,
+                                    self.iut2.stack.gap.iut_addr_get(),
+                                    start_hdl, end_hdl)
+            stack.gatt_cl.wait_for_chrcs()
 
-        btp.gattc_disc_all_chrc(self.iut1,
-                                self.iut2.stack.gap.iut_addr_get(),
-                                start_hdl, end_hdl)
+            chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
+            self.assertIsNotNone(chr)
 
-        btp.gattc_disc_all_chrc_rsp(self.iut1, db)
+            end_hdl = db.find_characteristic_end(chr.handle)
+            self.assertIsNotNone(end_hdl)
 
-        db.print_db()
+            btp.gatt_cl_disc_all_desc(self.iut1,
+                                      self.iut2.stack.gap.iut_addr_get(),
+                                      chr.value_handle + 1, end_hdl)
+            stack.gatt_cl.wait_for_descs()
 
-        chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
-        self.assertIsNotNone(chr)
+            dsc = db.find_dsc_by_uuid(PTS_DB.DSC_READ_WRITE)
+            self.assertIsNotNone(dsc)
 
-        end_hdl = db.find_characteristic_end(chr.handle)
-        self.assertIsNotNone(end_hdl)
+            btp.gatt_cl_read(self.iut1,
+                             self.iut2.stack.gap.iut_addr_get(),
+                             dsc.handle)
+            stack.gatt_cl.wait_for_read()
 
-        btp.gattc_disc_all_desc(self.iut1,
-                                self.iut2.stack.gap.iut_addr_get(),
-                                chr.value_handle + 1, end_hdl)
+            self.assertEqual(stack.gatt_cl.verify_values[0], "No error")
+        else:
+            btp.gattc_disc_prim_uuid(self.iut1,
+                                     self.iut2.stack.gap.iut_addr_get(),
+                                     PTS_DB.SVC)
 
-        btp.gattc_disc_all_desc_rsp(self.iut1, db)
+            db = GattDB()
+            btp.gattc_disc_prim_uuid_rsp(self.iut1, db)
 
-        db.print_db()
+            svc = db.find_svc_by_uuid(PTS_DB.SVC)
+            self.assertIsNotNone(svc)
 
-        dsc = db.find_dsc_by_uuid(PTS_DB.DSC_READ_WRITE)
-        self.assertIsNotNone(dsc)
+            start_hdl, end_hdl = svc.handle, svc.end_hdl
 
-        btp.gattc_read(self.iut1,
-                       self.iut2.stack.gap.iut_addr_get(),
-                       dsc.handle)
+            btp.gattc_disc_all_chrc(self.iut1,
+                                    self.iut2.stack.gap.iut_addr_get(),
+                                    start_hdl, end_hdl)
 
-        val = GattValue()
-        btp.gattc_read_rsp(self.iut1, val)
+            btp.gattc_disc_all_chrc_rsp(self.iut1, db)
 
-        self.assertEqual(val.att_rsp, "No error")
+            db.print_db()
+
+            chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
+            self.assertIsNotNone(chr)
+
+            end_hdl = db.find_characteristic_end(chr.handle)
+            self.assertIsNotNone(end_hdl)
+
+            btp.gattc_disc_all_desc(self.iut1,
+                                    self.iut2.stack.gap.iut_addr_get(),
+                                    chr.value_handle + 1, end_hdl)
+
+            btp.gattc_disc_all_desc_rsp(self.iut1, db)
+
+            db.print_db()
+
+            dsc = db.find_dsc_by_uuid(PTS_DB.DSC_READ_WRITE)
+            self.assertIsNotNone(dsc)
+
+            btp.gattc_read(self.iut1,
+                           self.iut2.stack.gap.iut_addr_get(),
+                           dsc.handle)
+
+            val = GattValue()
+            btp.gattc_read_rsp(self.iut1, val)
+
+            self.assertEqual(val.att_rsp, "No error")
 
         disconnection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
@@ -352,56 +492,96 @@ class GattTestCase(BTPTestCase):
         descriptor by selected handle. The Characteristic Descriptor length
         is unknown to the client and might be long.
         """
+        stack = self.iut1.stack
 
         self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
-        btp.gattc_disc_prim_uuid(self.iut1,
-                                 self.iut2.stack.gap.iut_addr_get(),
-                                 PTS_DB.SVC)
+        if stack.gatt_cl:
+            db = stack.gatt_cl.db
 
-        db = GattDB()
-        btp.gattc_disc_prim_uuid_rsp(self.iut1, db)
+            btp.gatt_cl_disc_prim_uuid(self.iut1,
+                                       self.iut2.stack.gap.iut_addr_get(),
+                                       PTS_DB.SVC)
+            stack.gatt_cl.wait_for_prim_svcs()
 
-        svc = db.find_svc_by_uuid(PTS_DB.SVC)
-        self.assertIsNotNone(svc)
+            svc = db.find_svc_by_uuid(PTS_DB.SVC)
+            self.assertIsNotNone(svc)
 
-        start_hdl, end_hdl = svc.handle, svc.end_hdl
+            start_hdl, end_hdl = svc.handle, svc.end_hdl
 
-        btp.gattc_disc_all_chrc(self.iut1,
+            btp.gatt_cl_disc_all_chrc(self.iut1,
+                                      self.iut2.stack.gap.iut_addr_get(),
+                                      start_hdl, end_hdl)
+            stack.gatt_cl.wait_for_chrcs()
+
+            chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
+            self.assertIsNotNone(chr)
+
+            end_hdl = db.find_characteristic_end(chr.handle)
+            self.assertIsNotNone(end_hdl)
+
+            btp.gatt_cl_disc_all_desc(self.iut1,
+                                      self.iut2.stack.gap.iut_addr_get(),
+                                      chr.value_handle + 1, end_hdl)
+            stack.gatt_cl.wait_for_descs()
+
+            dsc = db.find_dsc_by_uuid(PTS_DB.LONG_DSC_READ_WRITE)
+            self.assertIsNotNone(dsc)
+
+            btp.gatt_cl_read_long(self.iut1,
+                                  self.iut2.stack.gap.iut_addr_get(),
+                                  dsc.handle, 0)
+            stack.gatt_cl.wait_for_read()
+
+            self.assertEqual(stack.gatt_cl.verify_values[0], "No error")
+        else:
+            btp.gattc_disc_prim_uuid(self.iut1,
+                                     self.iut2.stack.gap.iut_addr_get(),
+                                     PTS_DB.SVC)
+
+            db = GattDB()
+            btp.gattc_disc_prim_uuid_rsp(self.iut1, db)
+
+            svc = db.find_svc_by_uuid(PTS_DB.SVC)
+            self.assertIsNotNone(svc)
+
+            start_hdl, end_hdl = svc.handle, svc.end_hdl
+
+            btp.gattc_disc_all_chrc(self.iut1,
+                                    self.iut2.stack.gap.iut_addr_get(),
+                                    start_hdl, end_hdl)
+
+            btp.gattc_disc_all_chrc_rsp(self.iut1, db)
+
+            db.print_db()
+
+            chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
+            self.assertIsNotNone(chr)
+
+            end_hdl = db.find_characteristic_end(chr.handle)
+            self.assertIsNotNone(end_hdl)
+
+            btp.gattc_disc_all_desc(self.iut1,
+                                    self.iut2.stack.gap.iut_addr_get(),
+                                    chr.value_handle + 1, end_hdl)
+
+            btp.gattc_disc_all_desc_rsp(self.iut1, db)
+
+            db.print_db()
+
+            dsc = db.find_dsc_by_uuid(PTS_DB.LONG_DSC_READ_WRITE)
+            self.assertIsNotNone(dsc)
+
+            btp.gattc_read_long(self.iut1,
                                 self.iut2.stack.gap.iut_addr_get(),
-                                start_hdl, end_hdl)
+                                dsc.handle, 0)
 
-        btp.gattc_disc_all_chrc_rsp(self.iut1, db)
+            val = GattValue()
+            btp.gattc_read_long_rsp(self.iut1, val)
 
-        db.print_db()
-
-        chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
-        self.assertIsNotNone(chr)
-
-        end_hdl = db.find_characteristic_end(chr.handle)
-        self.assertIsNotNone(end_hdl)
-
-        btp.gattc_disc_all_desc(self.iut1,
-                                self.iut2.stack.gap.iut_addr_get(),
-                                chr.value_handle + 1, end_hdl)
-
-        btp.gattc_disc_all_desc_rsp(self.iut1, db)
-
-        db.print_db()
-
-        dsc = db.find_dsc_by_uuid(PTS_DB.LONG_DSC_READ_WRITE)
-        self.assertIsNotNone(dsc)
-
-        btp.gattc_read_long(self.iut1,
-                            self.iut2.stack.gap.iut_addr_get(),
-                            dsc.handle, 0)
-
-        val = GattValue()
-        btp.gattc_read_long_rsp(self.iut1, val)
-
-        self.assertEqual(val.att_rsp, "No error")
+            self.assertEqual(val.att_rsp, "No error")
 
         disconnection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
@@ -410,34 +590,55 @@ class GattTestCase(BTPTestCase):
         Verify that a Generic Attribute Profile client can write
         a Characteristic Value selected by handle.
         """
+        stack = self.iut1.stack
 
         self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
-        btp.gattc_disc_chrc_uuid(self.iut1,
-                                 self.iut2.stack.gap.iut_addr_get(),
-                                 0x0001, 0xffff, PTS_DB.CHR_READ_WRITE)
+        if stack.gatt_cl:
+            db = stack.gatt_cl.db
+            btp.gatt_cl_disc_chrc_uuid(self.iut1,
+                                       self.iut2.stack.gap.iut_addr_get(),
+                                       0x0001, 0xffff, PTS_DB.CHR_READ_WRITE)
+            stack.gatt_cl.wait_for_chrcs()
 
-        db = GattDB()
-        btp.gattc_disc_chrc_uuid_rsp(self.iut1, db)
+            chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
+            self.assertIsNotNone(chr)
 
-        db.print_db()
+            new_value = "FF"
+            btp.gatt_cl_write(self.iut1,
+                              self.iut2.stack.gap.iut_addr_get(),
+                              chr.value_handle,
+                              new_value)
+            future_iut2 = btp.gatts_attr_value_changed_ev(self.iut2)
+            stack.gatt_cl.wait_for_write_rsp()
 
-        chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
-        self.assertIsNotNone(chr)
+            self.assertEqual(stack.gatt_cl.verify_values[0], "No error")
+        else:
+            btp.gattc_disc_chrc_uuid(self.iut1,
+                                     self.iut2.stack.gap.iut_addr_get(),
+                                     0x0001, 0xffff, PTS_DB.CHR_READ_WRITE)
 
-        new_value = "FF"
-        btp.gattc_write(self.iut1,
-                        self.iut2.stack.gap.iut_addr_get(),
-                        chr.value_handle,
-                        new_value)
+            db = GattDB()
+            btp.gattc_disc_chrc_uuid_rsp(self.iut1, db)
 
-        future_iut2 = btp.gatts_attr_value_changed_ev(self.iut2)
+            db.print_db()
 
-        val = GattValue()
-        btp.gattc_write_rsp(self.iut1, val)
-        self.assertEqual(val.att_rsp, "No error")
+            chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
+            self.assertIsNotNone(chr)
+
+            new_value = "FF"
+            btp.gattc_write(self.iut1,
+                            self.iut2.stack.gap.iut_addr_get(),
+                            chr.value_handle,
+                            new_value)
+
+            future_iut2 = btp.gatts_attr_value_changed_ev(self.iut2)
+
+            val = GattValue()
+            btp.gattc_write_rsp(self.iut1, val)
+            self.assertEqual(val.att_rsp, "No error")
 
         wait_futures([future_iut2], timeout=EV_TIMEOUT)
 
@@ -451,34 +652,54 @@ class GattTestCase(BTPTestCase):
         Verify that a Generic Attribute Profile client can write a long
         Characteristic Value selected by handle.
         """
+        stack = self.iut1.stack
 
         self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
-        btp.gattc_disc_chrc_uuid(self.iut1,
+        if stack.gatt_cl:
+            db = stack.gatt_cl.db
+            btp.gatt_cl_disc_chrc_uuid(self.iut1,
+                                       self.iut2.stack.gap.iut_addr_get(),
+                              0x0001, 0xffff, PTS_DB.LONG_CHR_READ_WRITE)
+            stack.gatt_cl.wait_for_chrcs()
+
+            chr = db.find_chr_by_uuid(PTS_DB.LONG_CHR_READ_WRITE)
+            self.assertIsNotNone(chr)
+
+            new_value = "FF" * 100
+            btp.gatt_cl_write_long(self.iut1,
+                                   self.iut2.stack.gap.iut_addr_get(),
+                                   chr.value_handle,
+                                   0, new_value)
+            future_iut2 = btp.gatts_attr_value_changed_ev(self.iut2)
+            stack.gatt_cl.wait_for_write_rsp()
+            self.assertEqual(stack.gatt_cl.verify_values[0], "No error")
+        else:
+            btp.gattc_disc_chrc_uuid(self.iut1,
+                                     self.iut2.stack.gap.iut_addr_get(),
+                                     0x0001, 0xffff, PTS_DB.LONG_CHR_READ_WRITE)
+
+            db = GattDB()
+            btp.gattc_disc_chrc_uuid_rsp(self.iut1, db)
+
+            db.print_db()
+
+            chr = db.find_chr_by_uuid(PTS_DB.LONG_CHR_READ_WRITE)
+            self.assertIsNotNone(chr)
+
+            new_value = "FF" * 100
+            btp.gattc_write_long(self.iut1,
                                  self.iut2.stack.gap.iut_addr_get(),
-                                 0x0001, 0xffff, PTS_DB.LONG_CHR_READ_WRITE)
+                                 chr.value_handle,
+                                 0, new_value)
 
-        db = GattDB()
-        btp.gattc_disc_chrc_uuid_rsp(self.iut1, db)
+            future_iut2 = btp.gatts_attr_value_changed_ev(self.iut2)
 
-        db.print_db()
-
-        chr = db.find_chr_by_uuid(PTS_DB.LONG_CHR_READ_WRITE)
-        self.assertIsNotNone(chr)
-
-        new_value = "FF" * 100
-        btp.gattc_write_long(self.iut1,
-                             self.iut2.stack.gap.iut_addr_get(),
-                             chr.value_handle,
-                             0, new_value)
-
-        future_iut2 = btp.gatts_attr_value_changed_ev(self.iut2)
-
-        val = GattValue()
-        btp.gattc_write_long_rsp(self.iut1, val)
-        self.assertEqual(val.att_rsp, "No error")
+            val = GattValue()
+            btp.gattc_write_long_rsp(self.iut1, val)
+            self.assertEqual(val.att_rsp, "No error")
 
         wait_futures([future_iut2], timeout=EV_TIMEOUT)
 
@@ -492,59 +713,103 @@ class GattTestCase(BTPTestCase):
         Verify that a Generic Attribute Profile client can write
         a characteristic descriptor selected by handle.
         """
+        stack = self.iut1.stack
 
         self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
-        btp.gattc_disc_prim_uuid(self.iut1,
-                                 self.iut2.stack.gap.iut_addr_get(),
-                                 PTS_DB.SVC)
+        if stack.gatt_cl:
+            db = stack.gatt_cl.db
+            btp.gatt_cl_disc_prim_uuid(self.iut1,
+                                       self.iut2.stack.gap.iut_addr_get(),
+                                       PTS_DB.SVC)
+            stack.gatt_cl.wait_for_prim_svcs()
+            svc = db.find_svc_by_uuid(PTS_DB.SVC)
+            self.assertIsNotNone(svc)
 
-        db = GattDB()
-        btp.gattc_disc_prim_uuid_rsp(self.iut1, db)
+            start_hdl, end_hdl = svc.handle, svc.end_hdl
 
-        svc = db.find_svc_by_uuid(PTS_DB.SVC)
-        self.assertIsNotNone(svc)
+            btp.gatt_cl_disc_all_chrc(self.iut1,
+                                      self.iut2.stack.gap.iut_addr_get(),
+                                      start_hdl, end_hdl)
+            stack.gatt_cl.wait_for_chrcs()
 
-        start_hdl, end_hdl = svc.handle, svc.end_hdl
+            chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
+            self.assertIsNotNone(chr)
 
-        btp.gattc_disc_all_chrc(self.iut1,
-                                self.iut2.stack.gap.iut_addr_get(),
-                                start_hdl, end_hdl)
+            end_hdl = db.find_characteristic_end(chr.handle)
+            self.assertIsNotNone(end_hdl)
 
-        btp.gattc_disc_all_chrc_rsp(self.iut1, db)
+            btp.gatt_cl_disc_all_desc(self.iut1,
+                                      self.iut2.stack.gap.iut_addr_get(),
+                                      chr.value_handle + 1, end_hdl)
+            stack.gatt_cl.wait_for_descs()
 
-        db.print_db()
+            dsc = db.find_dsc_by_uuid(PTS_DB.DSC_READ_WRITE)
+            self.assertIsNotNone(dsc)
 
-        chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
-        self.assertIsNotNone(chr)
+            new_value = "FF"
+            btp.gatt_cl_write(self.iut1,
+                              self.iut2.stack.gap.iut_addr_get(),
+                              dsc.handle,
+                              new_value)
 
-        end_hdl = db.find_characteristic_end(chr.handle)
-        self.assertIsNotNone(end_hdl)
+            future_iut2 = btp.gatts_attr_value_changed_ev(self.iut2)
 
-        btp.gattc_disc_all_desc(self.iut1,
-                                self.iut2.stack.gap.iut_addr_get(),
-                                chr.value_handle + 1, end_hdl)
+            stack.gatt_cl.wait_for_write_rsp()
 
-        btp.gattc_disc_all_desc_rsp(self.iut1, db)
+            self.assertEqual(stack.gatt_cl.verify_values[0], "No error")
+        else:
+            btp.gattc_disc_prim_uuid(self.iut1,
+                                     self.iut2.stack.gap.iut_addr_get(),
+                                     PTS_DB.SVC)
 
-        db.print_db()
+            db = GattDB()
+            btp.gattc_disc_prim_uuid_rsp(self.iut1, db)
 
-        dsc = db.find_dsc_by_uuid(PTS_DB.DSC_READ_WRITE)
-        self.assertIsNotNone(dsc)
+            svc = db.find_svc_by_uuid(PTS_DB.SVC)
+            self.assertIsNotNone(svc)
 
-        new_value = "FF"
-        btp.gattc_write(self.iut1,
-                        self.iut2.stack.gap.iut_addr_get(),
-                        dsc.handle,
-                        new_value)
+            start_hdl, end_hdl = svc.handle, svc.end_hdl
 
-        future_iut2 = btp.gatts_attr_value_changed_ev(self.iut2)
+            btp.gattc_disc_all_chrc(self.iut1,
+                                    self.iut2.stack.gap.iut_addr_get(),
+                                    start_hdl, end_hdl)
 
-        val = GattValue()
-        btp.gattc_write_rsp(self.iut1, val)
-        self.assertEqual(val.att_rsp, "No error")
+            btp.gattc_disc_all_chrc_rsp(self.iut1, db)
+
+            db.print_db()
+
+            chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
+            self.assertIsNotNone(chr)
+
+            end_hdl = db.find_characteristic_end(chr.handle)
+            self.assertIsNotNone(end_hdl)
+
+            btp.gattc_disc_all_desc(self.iut1,
+                                    self.iut2.stack.gap.iut_addr_get(),
+                                    chr.value_handle + 1, end_hdl)
+
+            btp.gattc_disc_all_desc_rsp(self.iut1, db)
+
+            db.print_db()
+
+            dsc = db.find_dsc_by_uuid(PTS_DB.DSC_READ_WRITE)
+            self.assertIsNotNone(dsc)
+
+            new_value = "FF"
+            btp.gattc_write(self.iut1,
+                            self.iut2.stack.gap.iut_addr_get(),
+                            dsc.handle,
+                            new_value)
+
+            future_iut2 = btp.gatts_attr_value_changed_ev(self.iut2)
+
+            val = GattValue()
+            btp.gattc_write_rsp(self.iut1, val)
+
+            self.assertEqual(val.att_rsp, "No error")
 
         wait_futures([future_iut2], timeout=EV_TIMEOUT)
 
@@ -558,59 +823,101 @@ class GattTestCase(BTPTestCase):
         Verify that a Generic Attribute Profile client can write a long
         characteristic descriptor selected by handle.
         """
+        stack = self.iut1.stack
 
         self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
-        btp.gattc_disc_prim_uuid(self.iut1,
+        if stack.gatt_cl:
+            db = stack.gatt_cl.db
+            btp.gatt_cl_disc_prim_uuid(self.iut1,
+                                       self.iut2.stack.gap.iut_addr_get(),
+                                       PTS_DB.SVC)
+            stack.gatt_cl.wait_for_prim_svcs()
+            svc = db.find_svc_by_uuid(PTS_DB.SVC)
+            self.assertIsNotNone(svc)
+
+            start_hdl, end_hdl = svc.handle, svc.end_hdl
+
+            btp.gatt_cl_disc_all_chrc(self.iut1,
+                                      self.iut2.stack.gap.iut_addr_get(),
+                                      start_hdl, end_hdl)
+            stack.gatt_cl.wait_for_chrcs()
+
+            chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
+            self.assertIsNotNone(chr)
+
+            end_hdl = db.find_characteristic_end(chr.handle)
+            self.assertIsNotNone(end_hdl)
+
+            btp.gatt_cl_disc_all_desc(self.iut1,
+                                      self.iut2.stack.gap.iut_addr_get(),
+                                      chr.value_handle + 1, end_hdl)
+            stack.gatt_cl.wait_for_descs()
+
+            dsc = db.find_dsc_by_uuid(PTS_DB.LONG_DSC_READ_WRITE)
+            self.assertIsNotNone(dsc)
+
+            new_value = "FF" * 100
+            btp.gatt_cl_write_long(self.iut1,
+                                   self.iut2.stack.gap.iut_addr_get(),
+                                   dsc.handle,
+                                   0, new_value)
+
+            future_iut2 = btp.gatts_attr_value_changed_ev(self.iut2)
+
+            stack.gatt_cl.wait_for_write_rsp()
+            self.assertEqual(stack.gatt_cl.verify_values[0], "No error")
+        else:
+            btp.gattc_disc_prim_uuid(self.iut1,
+                                     self.iut2.stack.gap.iut_addr_get(),
+                                     PTS_DB.SVC)
+
+            db = GattDB()
+            btp.gattc_disc_prim_uuid_rsp(self.iut1, db)
+
+            svc = db.find_svc_by_uuid(PTS_DB.SVC)
+            self.assertIsNotNone(svc)
+
+            start_hdl, end_hdl = svc.handle, svc.end_hdl
+
+            btp.gattc_disc_all_chrc(self.iut1,
+                                    self.iut2.stack.gap.iut_addr_get(),
+                                    start_hdl, end_hdl)
+
+            btp.gattc_disc_all_chrc_rsp(self.iut1, db)
+
+            db.print_db()
+
+            chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
+            self.assertIsNotNone(chr)
+
+            end_hdl = db.find_characteristic_end(chr.handle)
+            self.assertIsNotNone(end_hdl)
+
+            btp.gattc_disc_all_desc(self.iut1,
+                                    self.iut2.stack.gap.iut_addr_get(),
+                                    chr.value_handle + 1, end_hdl)
+
+            btp.gattc_disc_all_desc_rsp(self.iut1, db)
+
+            db.print_db()
+
+            dsc = db.find_dsc_by_uuid(PTS_DB.LONG_DSC_READ_WRITE)
+            self.assertIsNotNone(dsc)
+
+            new_value = "FF" * 100
+            btp.gattc_write_long(self.iut1,
                                  self.iut2.stack.gap.iut_addr_get(),
-                                 PTS_DB.SVC)
+                                 dsc.handle,
+                                 0, new_value)
 
-        db = GattDB()
-        btp.gattc_disc_prim_uuid_rsp(self.iut1, db)
+            future_iut2 = btp.gatts_attr_value_changed_ev(self.iut2)
 
-        svc = db.find_svc_by_uuid(PTS_DB.SVC)
-        self.assertIsNotNone(svc)
-
-        start_hdl, end_hdl = svc.handle, svc.end_hdl
-
-        btp.gattc_disc_all_chrc(self.iut1,
-                                self.iut2.stack.gap.iut_addr_get(),
-                                start_hdl, end_hdl)
-
-        btp.gattc_disc_all_chrc_rsp(self.iut1, db)
-
-        db.print_db()
-
-        chr = db.find_chr_by_uuid(PTS_DB.CHR_READ_WRITE)
-        self.assertIsNotNone(chr)
-
-        end_hdl = db.find_characteristic_end(chr.handle)
-        self.assertIsNotNone(end_hdl)
-
-        btp.gattc_disc_all_desc(self.iut1,
-                                self.iut2.stack.gap.iut_addr_get(),
-                                chr.value_handle + 1, end_hdl)
-
-        btp.gattc_disc_all_desc_rsp(self.iut1, db)
-
-        db.print_db()
-
-        dsc = db.find_dsc_by_uuid(PTS_DB.LONG_DSC_READ_WRITE)
-        self.assertIsNotNone(dsc)
-
-        new_value = "FF" * 100
-        btp.gattc_write_long(self.iut1,
-                             self.iut2.stack.gap.iut_addr_get(),
-                             dsc.handle,
-                             0, new_value)
-
-        future_iut2 = btp.gatts_attr_value_changed_ev(self.iut2)
-
-        val = GattValue()
-        btp.gattc_write_long_rsp(self.iut1, val)
-        self.assertEqual(val.att_rsp, "No error")
+            val = GattValue()
+            btp.gattc_write_long_rsp(self.iut1, val)
+            self.assertEqual(val.att_rsp, "No error")
 
         wait_futures([future_iut2], timeout=EV_TIMEOUT)
 
@@ -624,44 +931,82 @@ class GattTestCase(BTPTestCase):
         Verify that a Generic Attribute Profile client can receive
         a Characteristic Value Notification and report that to the Upper Tester.
         """
+        stack = self.iut1.stack
 
         self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
-        db = GattDB()
-        btp.gattc_disc_chrc_uuid(self.iut1,
+        if stack.gatt_cl:
+            db = stack.gatt_cl.db
+            btp.gatt_cl_disc_chrc_uuid(self.iut1,
+                                       self.iut2.stack.gap.iut_addr_get(),
+                                       0x0001, 0xffff, PTS_DB.CHR_NOTIFY)
+            stack.gatt_cl.wait_for_chrcs()
+
+            chr = db.find_chr_by_uuid(PTS_DB.CHR_NOTIFY)
+            self.assertIsNotNone(chr)
+            end_hdl = db.find_characteristic_end(chr.handle)
+            self.assertIsNotNone(end_hdl)
+
+            btp.gatt_cl_disc_all_desc(self.iut1,
+                                      self.iut2.stack.gap.iut_addr_get(),
+                                      chr.value_handle + 1, end_hdl)
+            stack.gatt_cl.wait_for_descs()
+
+            dsc = db.find_dsc_by_uuid(UUID.CCC)
+            self.assertIsNotNone(dsc)
+
+            btp.gatt_cl_cfg_notify(self.iut1,
+                                   self.iut2.stack.gap.iut_addr_get(),
+                                   1, dsc.handle)
+            stack.gatt_cl.wait_for_write_rsp()
+
+            _, _, value = btp.gatts_get_attr_val(self.iut1,
+                                                 self.iut2.stack.gap.iut_addr_get(),
+                                                 chr.value_handle)
+            value = b'\x01'
+
+            btp.gatts_set_val(self.iut2, chr.value_handle, hexlify(value[::-1]))
+            stack.gatt_cl.wait_for_notifications(expected_count=1)
+
+            self.assertTrue(verify_notification_ev(stack.gatt_cl.notifications[0],
+                                                   self.iut2.stack.gap.iut_addr_get(),
+                                                   0x01, chr.value_handle))
+        else:
+            db = GattDB()
+            btp.gattc_disc_chrc_uuid(self.iut1,
+                                     self.iut2.stack.gap.iut_addr_get(),
+                                     0x0001, 0xffff, PTS_DB.CHR_NOTIFY)
+            btp.gattc_disc_chrc_uuid_rsp(self.iut1, db)
+            db.print_db()
+    
+            chr = db.find_chr_by_uuid(PTS_DB.CHR_NOTIFY)
+            self.assertIsNotNone(chr)
+            end_hdl = db.find_characteristic_end(chr.handle)
+            self.assertIsNotNone(end_hdl)
+    
+            btp.gattc_disc_all_desc(self.iut1,
+                                    self.iut2.stack.gap.iut_addr_get(),
+                                    chr.value_handle + 1, end_hdl)
+            btp.gattc_disc_all_desc_rsp(self.iut1, db)
+            db.print_db()
+    
+            dsc = db.find_dsc_by_uuid(UUID.CCC)
+            self.assertIsNotNone(dsc)
+    
+            future_iut1 = btp.gattc_notification_ev(self.iut1)
+    
+            btp.gattc_cfg_notify(self.iut1,
                                  self.iut2.stack.gap.iut_addr_get(),
-                                 0x0001, 0xffff, PTS_DB.CHR_NOTIFY)
-        btp.gattc_disc_chrc_uuid_rsp(self.iut1, db)
-        db.print_db()
+                                 1, dsc.handle)
+    
+            wait_futures([future_iut1], timeout=EV_TIMEOUT)
+            result = future_iut1.result()
 
-        chr = db.find_chr_by_uuid(PTS_DB.CHR_NOTIFY)
-        self.assertIsNotNone(chr)
-        end_hdl = db.find_characteristic_end(chr.handle)
-        self.assertIsNotNone(end_hdl)
-
-        btp.gattc_disc_all_desc(self.iut1,
-                                self.iut2.stack.gap.iut_addr_get(),
-                                chr.value_handle + 1, end_hdl)
-        btp.gattc_disc_all_desc_rsp(self.iut1, db)
-        db.print_db()
-
-        dsc = db.find_dsc_by_uuid(UUID.CCC)
-        self.assertIsNotNone(dsc)
-
-        future_iut1 = btp.gattc_notification_ev(self.iut1)
-
-        btp.gattc_cfg_notify(self.iut1,
-                             self.iut2.stack.gap.iut_addr_get(),
-                             1, dsc.handle)
-
-        wait_futures([future_iut1], timeout=EV_TIMEOUT)
-        result = future_iut1.result()
-
-        self.assertTrue(verify_notification_ev(result,
-                                               self.iut2.stack.gap.iut_addr_get(),
-                                               0x01, chr.value_handle))
+            self.assertTrue(verify_notification_ev(result,
+                                                   self.iut2.stack.gap.iut_addr_get(),
+                                                   0x01, chr.value_handle))
 
         disconnection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
@@ -670,44 +1015,81 @@ class GattTestCase(BTPTestCase):
         Verify that a Generic Attribute Profile client can receive
         a Characteristic Value Notification and report that to the Upper Tester.
         """
+        stack = self.iut1.stack
 
         self.verify_skipped(sys._getframe().f_code.co_name)
 
         connection_procedure(self, central=self.iut1, peripheral=self.iut2)
 
-        db = GattDB()
-        btp.gattc_disc_chrc_uuid(self.iut1,
-                                 self.iut2.stack.gap.iut_addr_get(),
-                                 0x0001, 0xffff, PTS_DB.CHR_NOTIFY)
-        btp.gattc_disc_chrc_uuid_rsp(self.iut1, db)
-        db.print_db()
+        if stack.gatt_cl:
+            db = stack.gatt_cl.db
+            btp.gatt_cl_disc_chrc_uuid(self.iut1,
+                                       self.iut2.stack.gap.iut_addr_get(),
+                                       0x0001, 0xffff, PTS_DB.CHR_NOTIFY)
+            stack.gatt_cl.wait_for_chrcs()
 
-        chr = db.find_chr_by_uuid(PTS_DB.CHR_NOTIFY)
-        self.assertIsNotNone(chr)
-        end_hdl = db.find_characteristic_end(chr.handle)
-        self.assertIsNotNone(end_hdl)
+            chr = db.find_chr_by_uuid(PTS_DB.CHR_NOTIFY)
+            self.assertIsNotNone(chr)
+            end_hdl = db.find_characteristic_end(chr.handle)
+            self.assertIsNotNone(end_hdl)
 
-        btp.gattc_disc_all_desc(self.iut1,
-                                self.iut2.stack.gap.iut_addr_get(),
-                                chr.value_handle + 1, end_hdl)
-        btp.gattc_disc_all_desc_rsp(self.iut1, db)
-        db.print_db()
+            btp.gatt_cl_disc_all_desc(self.iut1,
+                                      self.iut2.stack.gap.iut_addr_get(),
+                                      chr.value_handle + 1, end_hdl)
+            stack.gatt_cl.wait_for_descs()
 
-        dsc = db.find_dsc_by_uuid(UUID.CCC)
-        self.assertIsNotNone(dsc)
+            dsc = db.find_dsc_by_uuid(UUID.CCC)
+            self.assertIsNotNone(dsc)
+            btp.gatt_cl_cfg_indicate(self.iut1,
+                                     self.iut2.stack.gap.iut_addr_get(),
+                                     1, dsc.handle)
+            stack.gatt_cl.wait_for_write_rsp()
 
-        future_iut1 = btp.gattc_notification_ev(self.iut1)
+            _, _, value = btp.gatts_get_attr_val(self.iut1,
+                                                 self.iut2.stack.gap.iut_addr_get(),
+                                                 chr.value_handle)
+            value = b'\x01'
 
-        btp.gattc_cfg_indicate(self.iut1,
-                               self.iut2.stack.gap.iut_addr_get(),
-                               1, dsc.handle)
+            btp.gatts_set_val(self.iut2, chr.value_handle, hexlify(value[::-1]))
+            stack.gatt_cl.wait_for_notifications(expected_count=1)
 
-        wait_futures([future_iut1], timeout=EV_TIMEOUT)
-        result = future_iut1.result()
+            self.assertTrue(verify_notification_ev(stack.gatt_cl.notifications[0],
+                                                   self.iut2.stack.gap.iut_addr_get(),
+                                                   0x01, chr.value_handle))
+        else:
+            db = GattDB()
+            btp.gattc_disc_chrc_uuid(self.iut1,
+                                     self.iut2.stack.gap.iut_addr_get(),
+                                     0x0001, 0xffff, PTS_DB.CHR_NOTIFY)
+            btp.gattc_disc_chrc_uuid_rsp(self.iut1, db)
+            db.print_db()
 
-        self.assertTrue(verify_notification_ev(result,
-                                               self.iut2.stack.gap.iut_addr_get(),
-                                               0x02, chr.value_handle))
+            chr = db.find_chr_by_uuid(PTS_DB.CHR_NOTIFY)
+            self.assertIsNotNone(chr)
+            end_hdl = db.find_characteristic_end(chr.handle)
+            self.assertIsNotNone(end_hdl)
+
+            btp.gattc_disc_all_desc(self.iut1,
+                                    self.iut2.stack.gap.iut_addr_get(),
+                                    chr.value_handle + 1, end_hdl)
+            btp.gattc_disc_all_desc_rsp(self.iut1, db)
+            db.print_db()
+
+            dsc = db.find_dsc_by_uuid(UUID.CCC)
+            self.assertIsNotNone(dsc)
+
+            future_iut1 = btp.gattc_notification_ev(self.iut1)
+
+            btp.gattc_cfg_indicate(self.iut1,
+                                   self.iut2.stack.gap.iut_addr_get(),
+                                   1, dsc.handle)
+
+            wait_futures([future_iut1], timeout=EV_TIMEOUT)
+            result = future_iut1.result()
+
+            self.assertTrue(verify_notification_ev(result,
+                                                   self.iut2.stack.gap.iut_addr_get(),
+                                                   0x02, chr.value_handle))
 
         disconnection_procedure(self, central=self.iut1, peripheral=self.iut2)
 

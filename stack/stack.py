@@ -12,11 +12,16 @@
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
 # more details.
 #
+from threading import Lock, Event, Timer
+
+from pybtp.btp import GATT_CL
 from stack.gap import Gap, BleAddress
 from stack.gatt import Gatt
 from stack.l2cap import L2CAP
 from stack.mesh import Mesh
+from stack.gatt_cl import GattCl
 
+STACK = None
 
 class Stack:
     def __init__(self):
@@ -26,6 +31,7 @@ class Stack:
         self.gatt = None
         self.mesh = None
         self.l2cap = None
+        self.gatt_cl = None
 
     def gap_init(self):
         self.gap = Gap()
@@ -35,6 +41,9 @@ class Stack:
 
     def l2cap_init(self):
         self.l2cap = L2CAP()
+
+    def gatt_cl_init(self):
+        self.gatt_cl = GattCl()
 
     def mesh_init(self, uuid, oob, output_size, output_actions, input_size,
                   input_actions, crpl_size):
@@ -70,3 +79,19 @@ class Stack:
 
         if self.gatt:
             self.gatt = Gatt()
+
+
+def init_stack():
+    global STACK
+
+    STACK = Stack()
+
+
+def cleanup_stack():
+    global STACK
+
+    STACK = None
+
+
+def get_stack():
+    return STACK
