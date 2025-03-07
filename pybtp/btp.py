@@ -269,6 +269,28 @@ MESH = {
                        CONTROLLER_INDEX, ""),
 }
 
+def read_supp_svcs(iutctl: IutCtl):
+    logging.debug("%s", read_supp_svcs.__name__)
+
+    iutctl.btp_worker.send(*CORE['read_supp_svcs'])
+
+    # Expected result
+    tuple_hdr, tuple_data = iutctl.btp_worker.read()
+    btp_hdr_check(tuple_hdr,
+                  defs.BTP_SERVICE_ID_CORE,
+                  defs.CORE_READ_SUPPORTED_SERVICES)
+    logging.debug("%s received %r %r", read_supp_svcs.__name__,
+                  tuple_hdr, tuple_data)
+
+    iutctl.stack.supported_svcs = tuple_data[0]
+
+
+def check_bit(data: bytes, bit: int) -> int:
+    """Check if a specific bit is set"""
+    byte_index = bit // 8
+    bit_index = bit % 8
+    return (data[byte_index] & (1 << bit_index)) != 0
+
 
 def clear_verify_values(stack):
     stack.gatt_cl.verify_values = []

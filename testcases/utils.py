@@ -19,6 +19,7 @@ import os
 
 from pybtp import btp
 from pybtp.btp import parse_ad, ad_find_uuid16
+from pybtp.defs import BTP_SERVICE_ID_GATTC
 from pybtp.types import AdType
 from pybtp.utils import wait_futures
 from stack.gap import BleAddress
@@ -27,16 +28,25 @@ EV_TIMEOUT = 20
 
 
 def preconditions(iutctl):
-    # TODO: find better way to initialize stack objetcs and
-    #  svcs initialization
+    get_supp_svcs(iutctl)
     btp.core_reg_svc_gap(iutctl)
     btp.core_reg_svc_gatt(iutctl)
     iutctl.stack.gap_init()
     iutctl.stack.gatt_init()
-    btp.gap_read_ctrl_info(iutctl)
     if iutctl.id == 0:
-        btp.core_reg_svc_gatt_cl(iutctl)
-        iutctl.stack.gatt_cl_init()
+        # Register GATT_CL BTP service only for Central device
+        if check_supp_svcs(iutctl.stack.supported_svcs, int(BTP_SERVICE_ID_GATTC)):
+            btp.core_reg_svc_gatt_cl(iutctl)
+            iutctl.stack.gatt_cl_init()
+    btp.gap_read_ctrl_info(iutctl)
+
+
+def get_supp_svcs(iutctl):
+    btp.read_supp_svcs(iutctl)
+
+
+def check_supp_svcs(svcs, bit):
+    return btp.check_bit(svcs, bit)
 
 
 def find_adv_by_addr(args, addr: BleAddress):
