@@ -25,6 +25,7 @@ STACK = None
 
 class Stack:
     def __init__(self):
+        self.supported_svcs = 0
         self._pairing_consent_cb = None
         self._passkey_confirm_cb = None
         self.gap = None
